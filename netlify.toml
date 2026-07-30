@@ -30,6 +30,9 @@
     Permissions-Policy = "geolocation=(self), camera=(), microphone=(), payment=()"
     Cross-Origin-Opener-Policy = "same-origin"
     # 외부 출처: Unsplash(이미지), DiceBear(아바타), OSM 타일(지도), jsDelivr(폰트)
+    # 관광지 사진은 public/attractions/ 에 번들되어 'self'로 처리된다.
+    # ⚠️ 새 외부 이미지 도메인을 쓰면 반드시 img-src에 추가할 것.
+    #    빠뜨리면 로컬 dev에서는 보이고 배포 후에만 깨진다(dev 서버는 이 헤더를 적용하지 않음).
     # style-src의 unsafe-inline은 React inline style과 Leaflet divIcon 때문에 필요.
     Content-Security-Policy = """
       default-src 'self';
