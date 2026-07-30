@@ -1,13 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlertCircle, Bot, RotateCcw, Send, Square } from 'lucide-react';
+import { AlertCircle, Bot, KeyRound, RotateCcw, Send, Square } from 'lucide-react';
 import { MobileLayout } from '@/components/layout/MobileLayout';
+import { Modal } from '@/components/common/Modal';
+import { PrimaryButton } from '@/components/common/PrimaryButton';
+import { SecondaryButton } from '@/components/common/SecondaryButton';
 import { useSupportChat } from '@/hooks/useSupportChat';
 import { SUPPORT_MAX_CHARS, SUPPORT_SUGGESTIONS } from '@/data/supportContext';
 import { cn } from '@/utils/cn';
 
 export default function SupportChat() {
-  const { messages, streamingText, isStreaming, error, send, stop, reset } = useSupportChat();
+  const {
+    messages,
+    streamingText,
+    isStreaming,
+    error,
+    needsPasscode,
+    passcodeError,
+    send,
+    stop,
+    reset,
+    submitPasscode,
+    dismissPasscode,
+  } = useSupportChat();
   const [input, setInput] = useState('');
+  const [passcode, setPasscode] = useState('');
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -125,6 +141,58 @@ export default function SupportChat() {
           </div>
         </div>
       </div>
+
+      <Modal
+        open={needsPasscode}
+        onClose={() => {
+          setPasscode('');
+          dismissPasscode();
+        }}
+        title="발표용 접속 암호"
+      >
+        <p className="text-sm text-text-secondary">
+          AI 상담은 실제 API를 호출하기 때문에 접속 암호로 보호하고 있어요. 발표자에게 받은 암호를
+          입력해 주세요.
+        </p>
+        <div className="mt-3 flex items-center gap-2 rounded-button border border-border bg-bg px-3">
+          <KeyRound size={16} className="shrink-0 text-text-secondary" aria-hidden="true" />
+          <input
+            type="password"
+            value={passcode}
+            autoFocus
+            onChange={(e) => setPasscode(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                void submitPasscode(passcode);
+                setPasscode('');
+              }
+            }}
+            placeholder="암호 입력"
+            aria-label="접속 암호"
+            className="min-h-[44px] flex-1 bg-transparent text-sm text-text outline-none placeholder:text-text-secondary"
+          />
+        </div>
+        {passcodeError && <p className="mt-2 text-sm font-medium text-danger">{passcodeError}</p>}
+        <div className="mt-4 flex gap-2">
+          <SecondaryButton
+            onClick={() => {
+              setPasscode('');
+              dismissPasscode();
+            }}
+          >
+            취소
+          </SecondaryButton>
+          <PrimaryButton
+            disabled={!passcode.trim()}
+            onClick={() => {
+              void submitPasscode(passcode);
+              setPasscode('');
+            }}
+          >
+            확인
+          </PrimaryButton>
+        </div>
+      </Modal>
     </MobileLayout>
   );
 }

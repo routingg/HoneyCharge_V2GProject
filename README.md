@@ -150,32 +150,76 @@ ANTHROPIC_API_KEY=sk-ant-...
 ### 구조
 
 ```
-브라우저  ──POST /api/support-chat──▶  Vite 서버 미들웨어 (Node)
-                                            │  ANTHROPIC_API_KEY (서버 전용)
-                                            ▼
-                                      Anthropic Messages API
-          ◀──────  NDJSON 스트림  ──────────┘
+브라우저  ──POST /api/support-chat──▶  로컬: Vite 미들웨어 (vite.config.ts)
+             + x-support-passcode        배포: Netlify Function
+                                              │
+                                       server/supportChat.ts  ← 공용 핸들러
+                                              │  ANTHROPIC_API_KEY (서버 전용)
+                                              ▼
+                                       Anthropic Messages API
+          ◀──────  NDJSON 스트림  ────────────┘
 ```
 
 | 파일 | 역할 |
 |---|---|
-| `vite.config.ts` | `/api/support-chat` 프록시 (`configureServer` + `configurePreviewServer`) |
+| `server/supportChat.ts` | **공용 핸들러** — 검증·암호 게이트·레이트 리밋·스트리밍 |
+| `netlify/functions/support-chat.ts` | 프로덕션 진입점 (Netlify Functions 2.0) |
+| `vite.config.ts` | 개발·프리뷰 진입점 (동일 핸들러 사용) |
 | `src/data/supportFaq.ts` | FAQ 원본 — 화면과 시스템 프롬프트가 공유 |
 | `src/data/supportContext.ts` | 시스템 프롬프트, 입력 제한, 추천 질문 |
-| `src/hooks/useSupportChat.ts` | NDJSON 스트림 파싱 및 대화 상태 |
-| `src/pages/support/SupportChat.tsx` | 채팅 UI (스트리밍 표시, 중단, 새로 시작) |
+| `src/hooks/useSupportChat.ts` | 스트림 파싱, 대화 상태, 암호 재시도 |
+| `src/pages/support/SupportChat.tsx` | 채팅 UI + 암호 입력 모달 |
+
+개발과 배포가 **같은 핸들러 파일**을 쓰므로 두 환경의 보안 검증이 갈라지지 않습니다.
 
 - 모델 `claude-opus-5`, `effort: 'low'` + adaptive thinking, `max_tokens: 8192`, 스트리밍
 - 응답 형식: `{"type":"delta"|"done"|"error", ...}` 줄 단위 JSON
-- 서버에서 메시지 수(30개)·길이(2,000자)·본문 크기(256KB)를 검증합니다
-- 시스템 프롬프트에 "SOC 금지", "가상 데이터임을 밝힐 것", "모르면 지어내지 말 것" 규칙을 포함했습니다
+- 시스템 프롬프트에 "SOC 금지", "가상 데이터임을 밝힐 것", "모르면 지어내지 말 것" 규칙 포함
+
+### 보안 설계
+
+공개 URL에 배포하면 `/api/support-chat`이 인터넷에 열리고, **호출 비용은 API 키 소유자에게 청구**됩니다.
+다음 방어를 적용했습니다.
+
+| 방어 | 내용 |
+|---|---|
+| **접속 암호** | `SUPPORT_CHAT_PASSCODE` 환경변수. 클라이언트가 `x-support-passcode` 헤더로 전송하고 서버가 상수 시간 비교로 검증합니다. 주 방어선입니다. |
+| **fail-closed** | 배포 환경에서 암호가 설정되지 않으면 `503`으로 **아예 열지 않습니다**. 환경변수 누락으로 무방비 공개되는 사고를 막습니다. |
+| **레이트 리밋** | IP당 분당 8회, 인스턴스당 시간당 300회. 서버리스라 인스턴스별 메모리이므로 **best-effort**입니다. |
+| **입력 검증** | 메시지 수 30개, 길이 2,000자, 본문 256KB, `POST`만 허용 |
+| **키 격리** | `VITE_` 접두사 없음 → 번들 미포함. `@anthropic-ai/sdk`는 `devDependencies`(서버 전용) |
+| **보안 헤더** | `netlify.toml`에 CSP, `X-Frame-Options: DENY`, `Referrer-Policy` 등 |
+
+암호는 `sessionStorage`에 저장되어 탭을 닫으면 사라집니다. 발표 후에는 Netlify 환경변수에서
+`ANTHROPIC_API_KEY`를 지우면 채팅만 비활성화되고 나머지 화면은 그대로 동작합니다.
+
+### Netlify 배포
+
+```bash
+# 1) Netlify에서 GitHub 저장소 연결 (routingg/HoneyCharge_V2GProject)
+#    빌드 설정은 netlify.toml이 자동 적용됩니다:
+#      build command : npm run build
+#      publish       : dist
+#      functions     : netlify/functions
+
+# 2) Site configuration → Environment variables 에 2개 등록
+ANTHROPIC_API_KEY      = sk-ant-...
+SUPPORT_CHAT_PASSCODE  = <발표용 암호>
+
+# 3) 배포 후 확인
+#    https://<site>.netlify.app/            앱 로딩
+#    https://<site>.netlify.app/map         새로고침해도 404 아님 (SPA 리다이렉트)
+#    https://<site>.netlify.app/support/chat 암호 모달 → 입력 → 답변 스트리밍
+```
+
+로컬에서 암호 게이트를 재현하려면 `.env`에 `SUPPORT_CHAT_PASSCODE`를 추가하면 됩니다.
+설정하지 않으면 로컬에서는 암호 없이 열립니다(개발 편의).
 
 ### 제약
 
-- **`npm run dev` / `npm run preview`에서만 동작합니다.** `dist/`만 정적 호스팅하면 프록시가 없어
-  서버리스 함수(Vercel/Netlify Functions 등)로 같은 핸들러를 옮겨야 합니다.
-- `@anthropic-ai/sdk`는 서버에서만 쓰이므로 `devDependencies`에 있습니다(클라이언트 번들 미포함).
 - 대화 내용은 저장되지 않으며 새로고침하면 초기화됩니다.
+- 레이트 리밋은 서버리스 인스턴스 메모리 기반이라 완전한 차단을 보장하지 않습니다.
+  실서비스라면 Netlify Blobs·Upstash 등 외부 저장소 기반으로 교체해야 합니다.
 
 ## 주요 사용자 플로우
 

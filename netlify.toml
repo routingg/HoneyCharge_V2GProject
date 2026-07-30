@@ -1,0 +1,59 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# ── SPA 라우팅 ────────────────────────────────────────────────────────────────
+# BrowserRouter를 쓰므로 /map 같은 주소로 직접 접속하거나 새로고침해도
+# index.html이 서빙되어야 한다. /api/* 는 함수가 먼저 처리하므로 제외한다.
+[[redirects]]
+  from = "/api/*"
+  to = "/api/:splat"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# ── 보안 헤더 ────────────────────────────────────────────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(self), camera=(), microphone=(), payment=()"
+    Cross-Origin-Opener-Policy = "same-origin"
+    # 외부 출처: Unsplash(이미지), DiceBear(아바타), OSM 타일(지도), jsDelivr(폰트)
+    # style-src의 unsafe-inline은 React inline style과 Leaflet divIcon 때문에 필요.
+    Content-Security-Policy = """
+      default-src 'self';
+      base-uri 'self';
+      object-src 'none';
+      frame-ancestors 'none';
+      form-action 'self';
+      script-src 'self';
+      style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+      font-src 'self' https://cdn.jsdelivr.net;
+      img-src 'self' data: blob: https://images.unsplash.com https://api.dicebear.com https://*.tile.openstreetmap.org;
+      connect-src 'self';
+      worker-src 'self' blob:
+    """
+
+# API 응답은 절대 캐시하지 않는다
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Cache-Control = "no-store"
+    X-Robots-Tag = "noindex"
+
+# 해시가 붙은 빌드 산출물은 장기 캐시
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
