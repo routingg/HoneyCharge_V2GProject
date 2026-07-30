@@ -8,19 +8,33 @@ import type {
   HourlyEnergyData,
   Region,
   SimulationResult,
+  WeatherHour,
 } from "@/lib/types";
 
 export function buildEnergyTimeline(
   region: Region,
+  currentWeather?: WeatherHour,
 ): HourlyEnergyData[] {
   return getHourlyWeather(region).map((weather, hour) => {
-    const renewable = forecastRenewableGeneration(weather);
+    const currentHour = currentWeather
+      ? Number(currentWeather.timestamp.slice(11, 13))
+      : -1;
+    const normalizedWeather =
+      currentWeather && hour === currentHour
+        ? {
+            ...currentWeather,
+            region,
+            timestamp: weather.timestamp,
+          }
+        : weather;
+    const renewable =
+      forecastRenewableGeneration(normalizedWeather);
     const electricityDemandKw = forecastElectricityDemand(
       region,
       hour,
     );
     return {
-      ...weather,
+      ...normalizedWeather,
       ...renewable,
       electricityDemandKw,
       surplusPowerKw:
@@ -31,8 +45,11 @@ export function buildEnergyTimeline(
   });
 }
 
-export function runSimulation(region: Region): SimulationResult {
-  const baseEnergy = buildEnergyTimeline(region);
+export function runSimulation(
+  region: Region,
+  currentWeather?: WeatherHour,
+): SimulationResult {
+  const baseEnergy = buildEnergyTimeline(region, currentWeather);
   const schedules = getVehicles().map((vehicle) =>
     scheduleVehicle(vehicle, baseEnergy),
   );

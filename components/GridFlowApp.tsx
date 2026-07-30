@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Area,
   Bar,
@@ -22,7 +22,11 @@ import {
   CarFront,
   ChevronRight,
   CircleGauge,
+  Cloud,
   CloudSun,
+  Compass,
+  Database,
+  Gauge,
   Info,
   LayoutDashboard,
   Leaf,
@@ -30,58 +34,93 @@ import {
   Menu,
   PlugZap,
   ShieldCheck,
+  Sun,
   Sparkles,
+  ThermometerSun,
   Users,
+  Wind,
   X,
   Zap,
 } from "lucide-react";
+import { InfrastructureMap } from "@/components/InfrastructureMap";
 import {
   DEMO_CURRENT_HOUR,
   DEMO_DATE,
 } from "@/lib/data/mockData";
+import {
+  actionNameFor,
+  compassDirectionFor,
+  LanguageContext,
+  regionNameFor,
+  scheduleReasonFor,
+  statusNameFor,
+  textFor,
+  useLanguage,
+  vehicleModelFor,
+  weatherConditionFor,
+  windZoneFor,
+  type Language,
+} from "@/lib/i18n";
+import { getLiveWeather } from "@/lib/services/liveWeatherService";
+import { getRenewableForecastBreakdown } from "@/lib/services/renewableForecastService";
 import { runSimulation } from "@/lib/services/simulationService";
 import { getStayDurationHours } from "@/lib/services/stayDurationService";
 import { scheduleVehicle } from "@/lib/services/v2gScheduler";
 import type {
+  AbsorptionHorizon,
   Region,
-  ScheduleAction,
   Vehicle,
   VehicleSchedule,
+  VehicleStatus,
+  WeatherHour,
 } from "@/lib/types";
 
 type View = "dashboard" | "fleet" | "owner";
+type WeatherConnection = "loading" | "live" | "fallback";
 
-const regionName: Record<Region, string> = {
-  jeju: "제주",
-  honam: "호남",
-};
-const actionLabel: Record<ScheduleAction, string> = {
-  charge: "충전",
-  discharge: "방전",
-  standby: "대기",
-};
-const statusMeta = {
-  charging: { label: "충전 중", className: "status-charge" },
-  discharging: {
-    label: "방전 중",
-    className: "status-discharge",
-  },
-  standby: { label: "대기", className: "status-standby" },
-  offline: { label: "미연결", className: "status-offline" },
+const statusClassName: Record<VehicleStatus, string> = {
+  charging: "status-charge",
+  discharging: "status-discharge",
+  standby: "status-standby",
+  offline: "status-offline",
 };
 
-const formatPower = (value: number) =>
-  new Intl.NumberFormat("ko-KR", {
+const formatPower = (value: number, language: Language) =>
+  new Intl.NumberFormat(language === "ko" ? "ko-KR" : "en-US", {
     maximumFractionDigits: 0,
   }).format(value);
 
-function getScheduleStatus(schedule: VehicleSchedule) {
-  if (!schedule.vehicle.isConnected) return statusMeta.offline;
+const formatWeatherTimestamp = (
+  timestamp: string,
+  language: Language,
+) => {
+  const parsed = new Date(timestamp);
+  if (Number.isNaN(parsed.getTime())) {
+    return textFor(language, "현재 시각", "Current time");
+  }
+  return new Intl.DateTimeFormat(
+    language === "ko" ? "ko-KR" : "en-US",
+    {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: language === "ko" ? "2-digit" : "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: language === "en",
+    },
+  ).format(parsed);
+};
+
+function getScheduleStatus(
+  schedule: VehicleSchedule,
+): VehicleStatus {
+  if (!schedule.vehicle.isConnected) return "offline";
   const action =
     schedule.items[DEMO_CURRENT_HOUR]?.action ?? "standby";
-  if (action === "charge") return statusMeta.charging;
-  if (action === "discharge") return statusMeta.discharging;
-  return statusMeta.standby;
+  if (action === "charge") return "charging";
+  if (action === "discharge") return "discharging";
+  return "standby";
 }
 
 function Sidebar({
@@ -95,20 +134,23 @@ function Sidebar({
   open: boolean;
   onClose: () => void;
 }) {
+  const { language } = useLanguage();
+  const t = (korean: string, english: string) =>
+    textFor(language, korean, english);
   const nav = [
     {
       id: "dashboard" as const,
-      label: "운영 대시보드",
+      label: t("운영 대시보드", "Operations Dashboard"),
       icon: LayoutDashboard,
     },
     {
       id: "fleet" as const,
-      label: "차량·스케줄",
+      label: t("차량·스케줄", "Vehicles & Schedules"),
       icon: CarFront,
     },
     {
       id: "owner" as const,
-      label: "차주 참여",
+      label: t("차주 참여", "Driver Participation"),
       icon: Users,
     },
   ];
@@ -119,7 +161,7 @@ function Sidebar({
         <button
           className="sidebar-scrim"
           onClick={onClose}
-          aria-label="메뉴 닫기"
+          aria-label={t("메뉴 닫기", "Close menu")}
         />
       )}
       <aside className={`sidebar ${open ? "sidebar-open" : ""}`}>
@@ -135,13 +177,13 @@ function Sidebar({
         <button
           className="mobile-close"
           onClick={onClose}
-          aria-label="메뉴 닫기"
+          aria-label={t("메뉴 닫기", "Close menu")}
         >
           <X size={20} />
         </button>
 
         <p className="nav-kicker">WORKSPACE</p>
-        <nav aria-label="주요 메뉴">
+        <nav aria-label={t("주요 메뉴", "Primary navigation")}>
           {nav.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -168,19 +210,36 @@ function Sidebar({
               <ShieldCheck size={18} />
             </span>
             <div>
-              <strong>운영 안전 기준</strong>
+              <strong>
+                {t("운영 안전 기준", "Operating Safeguards")}
+              </strong>
               <p>
-                사용자 이동권을 모든 전력망 요청보다 우선합니다.
+                {t(
+                  "사용자 이동권을 모든 전력망 요청보다 우선합니다.",
+                  "Driver mobility takes priority over all grid requests.",
+                )}
               </p>
             </div>
           </div>
           <div className="operator">
-            <span className="operator-avatar">관</span>
+            <span className="operator-avatar">
+              {t("관", "OP")}
+            </span>
             <div>
-              <strong>통합 운영센터</strong>
-              <small>제주·호남 권역</small>
+              <strong>
+                {t(
+                  "통합 운영센터",
+                  "Integrated Operations Center",
+                )}
+              </strong>
+              <small>
+                {t("제주·호남 권역", "Jeju · Honam Region")}
+              </small>
             </div>
-            <span className="online-dot" aria-label="온라인" />
+            <span
+              className="online-dot"
+              aria-label={t("온라인", "Online")}
+            />
           </div>
         </div>
       </aside>
@@ -192,17 +251,31 @@ function Header({
   region,
   onRegion,
   onMenu,
+  weatherStatus,
+  weatherTimestamp,
 }: {
   region: Region;
   onRegion: (region: Region) => void;
   onMenu: () => void;
+  weatherStatus: WeatherConnection;
+  weatherTimestamp: string;
 }) {
+  const { language, setLanguage } = useLanguage();
+  const t = (korean: string, english: string) =>
+    textFor(language, korean, english);
+  const connectionLabel =
+    weatherStatus === "live"
+      ? t("실시간 기상 연결", "Live Weather Connected")
+      : weatherStatus === "loading"
+        ? t("기상 연결 중", "Connecting to Weather")
+        : t("시연 예보 전환", "Demo Forecast Fallback");
+
   return (
     <header className="topbar">
       <button
         className="menu-button"
         onClick={onMenu}
-        aria-label="메뉴 열기"
+        aria-label={t("메뉴 열기", "Open menu")}
       >
         <Menu size={21} />
       </button>
@@ -213,19 +286,58 @@ function Header({
           onChange={(event) =>
             onRegion(event.target.value as Region)
           }
-          aria-label="운영 지역"
+          aria-label={t("운영 지역", "Operating region")}
         >
-          <option value="jeju">제주 전력권역</option>
-          <option value="honam">호남 전력권역</option>
+          <option value="jeju">
+            {t("제주 전력권역", "Jeju Grid Region")}
+          </option>
+          <option value="honam">
+            {t("호남 전력권역", "Honam Grid Region")}
+          </option>
         </select>
       </div>
       <div className="topbar-meta">
-        <span className="live-chip">
-          <i /> 시뮬레이션 정상
+        <span
+          className={`live-chip ${weatherStatus === "fallback" ? "is-fallback" : ""}`}
+        >
+          <i /> {connectionLabel}
         </span>
         <span className="timestamp">
-          2026.07.30 11:00 기준
+          {t(
+            `${formatWeatherTimestamp(weatherTimestamp, language)} 기준`,
+            `As of ${formatWeatherTimestamp(weatherTimestamp, language)}`,
+          )}
         </span>
+      </div>
+      <div
+        className="language-control"
+        role="group"
+        aria-label={t("언어 선택", "Language selection")}
+      >
+        <button
+          type="button"
+          className={language === "ko" ? "active" : ""}
+          aria-pressed={language === "ko"}
+          aria-label={t(
+            "한국어로 전환",
+            "Switch to Korean",
+          )}
+          onClick={() => setLanguage("ko")}
+        >
+          KO
+        </button>
+        <button
+          type="button"
+          className={language === "en" ? "active" : ""}
+          aria-pressed={language === "en"}
+          aria-label={t(
+            "영어로 전환",
+            "Switch to English",
+          )}
+          onClick={() => setLanguage("en")}
+        >
+          EN
+        </button>
       </div>
     </header>
   );
@@ -268,18 +380,26 @@ function EnergyChart({
 }: {
   data: ReturnType<typeof runSimulation>["energy"];
 }) {
+  const { language } = useLanguage();
+  const t = (korean: string, english: string) =>
+    textFor(language, korean, english);
   const chartData = data.map((item) => ({
     hour: item.timestamp.slice(11, 16),
-    재생에너지: item.renewableGenerationKw,
-    수요: item.electricityDemandKw,
-    "V2G 충전": item.v2gChargePowerKw,
-    "V2G 방전": item.v2gDischargePowerKw,
+    solar: item.solarGenerationKw,
+    wind: item.windGenerationKw,
+    renewable: item.renewableGenerationKw,
+    demand: item.electricityDemandKw,
+    v2gCharge: item.v2gChargePowerKw,
+    v2gDischarge: item.v2gDischargePowerKw,
   }));
 
   return (
     <div
       className="chart-wrap"
-      aria-label="시간대별 에너지 수급 차트"
+      aria-label={t(
+        "시간대별 에너지 수급 차트",
+        "Hourly energy supply and demand chart",
+      )}
     >
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart
@@ -332,7 +452,7 @@ function EnergyChart({
               fontSize: 12,
             }}
             formatter={(value) => [
-              `${formatPower(Number(value))} kW`,
+              `${formatPower(Number(value), language)} kW`,
             ]}
           />
           <Legend
@@ -343,26 +463,48 @@ function EnergyChart({
           <ReferenceLine y={0} stroke="#b7c1bc" />
           <Area
             type="monotone"
-            dataKey="재생에너지"
+            dataKey="renewable"
+            name={t("재생에너지", "Renewables")}
             fill="url(#renewableFill)"
             stroke="#27966b"
             strokeWidth={2.4}
           />
           <Line
             type="monotone"
-            dataKey="수요"
+            dataKey="solar"
+            name={t("태양광", "Solar")}
+            stroke="#e4a52d"
+            strokeWidth={1.4}
+            strokeDasharray="4 4"
+            dot={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="wind"
+            name={t("풍력", "Wind")}
+            stroke="#3f91ad"
+            strokeWidth={1.4}
+            strokeDasharray="4 4"
+            dot={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="demand"
+            name={t("수요", "Demand")}
             stroke="#24435d"
             strokeWidth={2.4}
             dot={false}
           />
           <Bar
-            dataKey="V2G 충전"
+            dataKey="v2gCharge"
+            name={t("V2G 충전", "V2G Charging")}
             fill="#78c9a8"
             radius={[3, 3, 0, 0]}
             barSize={7}
           />
           <Bar
-            dataKey="V2G 방전"
+            dataKey="v2gDischarge"
+            name={t("V2G 방전", "V2G Discharging")}
             fill="#f2a65a"
             radius={[3, 3, 0, 0]}
             barSize={7}
@@ -375,16 +517,79 @@ function EnergyChart({
 
 function DashboardView({
   simulation,
-  onFleet,
+  liveWeather,
+  weatherStatus,
 }: {
   simulation: ReturnType<typeof runSimulation>;
-  onFleet: () => void;
+  liveWeather: WeatherHour | null;
+  weatherStatus: WeatherConnection;
 }) {
+  const { language } = useLanguage();
+  const t = (korean: string, english: string) =>
+    textFor(language, korean, english);
+  const [surplusExpanded, setSurplusExpanded] = useState(false);
+  const [absorptionHorizon, setAbsorptionHorizon] =
+    useState<AbsorptionHorizon>("day");
   const { stats, energy, schedules, region } = simulation;
-  const current = energy[DEMO_CURRENT_HOUR];
-  const visibleSchedules = schedules
-    .filter((item) => item.vehicle.ownerType === "rental")
-    .slice(0, 7);
+  const fallbackCurrent = energy[DEMO_CURRENT_HOUR];
+  const current = liveWeather ?? fallbackCurrent;
+  const parsedHour = Number(current.timestamp.slice(11, 13));
+  const currentHour = Math.min(
+    23,
+    Math.max(
+      0,
+      Number.isInteger(parsedHour)
+        ? parsedHour
+        : DEMO_CURRENT_HOUR,
+    ),
+  );
+  const demandReference = energy[currentHour];
+  const generation =
+    getRenewableForecastBreakdown(current);
+  const availableChargePowerKw = schedules.reduce(
+    (sum, schedule) =>
+      schedule.vehicle.isConnected
+        ? sum + schedule.vehicle.maxChargePowerKw
+        : sum,
+    0,
+  );
+  const estimatedSurplusPowerKw =
+    generation.renewableGenerationKw -
+    demandReference.electricityDemandKw;
+  const estimatedChargePowerKw = Math.round(
+    Math.min(
+      Math.max(0, estimatedSurplusPowerKw),
+      availableChargePowerKw,
+    ),
+  );
+  const currentDispatch = schedules.reduce(
+    (counts, schedule) => {
+      const action =
+        schedule.items[currentHour]?.action ?? "standby";
+      counts[action] += 1;
+      return counts;
+    },
+    { charge: 0, discharge: 0, standby: 0 },
+  );
+  const weatherSource =
+    weatherStatus === "live"
+      ? t("Open-Meteo 현재 모델", "Open-Meteo Current Model")
+      : weatherStatus === "loading"
+        ? t("현재 기상 연결 중", "Connecting Live Weather")
+        : t("시연 예보 대체", "Demo Forecast Fallback");
+  const absorption = stats.surplusAbsorption;
+  const selectedAbsorption =
+    absorption.periods[absorptionHorizon];
+  const projectedActiveHours =
+    absorption.activeAbsorptionHours * selectedAbsorption.days;
+  const absorptionHorizons: {
+    id: AbsorptionHorizon;
+    label: string;
+  }[] = [
+    { id: "day", label: t("24시간", "24 Hours") },
+    { id: "week", label: t("1주", "7 Days") },
+    { id: "month", label: t("30일", "30 Days") },
+  ];
 
   return (
     <>
@@ -393,65 +598,506 @@ function DashboardView({
           <span className="eyebrow">
             <span /> GRID OPERATIONS
           </span>
-          <h1>{regionName[region]} V2G 통합 운영</h1>
+          <h1>
+            {t(
+              `${regionNameFor(region, language)} V2G 통합 운영`,
+              `${regionNameFor(region, language)} Integrated V2G Operations`,
+            )}
+          </h1>
           <p>
-            재생에너지 수급과 차량 가용성을 함께 고려한 오늘의
-            운영 계획입니다.
+            {t(
+              "재생에너지 수급과 차량 가용성을 함께 고려한 오늘의 운영 계획입니다.",
+              "Today’s operating plan balances renewable supply with vehicle availability.",
+            )}
           </p>
         </div>
-        <div className="weather-summary">
-          <CloudSun size={22} />
-          <div>
-            <strong>{current.temperature}°</strong>
-            <span>
-              {current.condition} · 풍속 {current.windSpeed}m/s
-            </span>
-          </div>
+        <div className="forecast-badge">
+          <span><i /> {weatherStatus === "live" ? "LIVE FORECAST" : "SAFE FALLBACK"}</span>
+          <strong>
+            {t(
+              `${formatWeatherTimestamp(current.timestamp, language)} 추정`,
+              `Estimated at ${formatWeatherTimestamp(current.timestamp, language)}`,
+            )}
+          </strong>
+          <small>
+            {weatherSource} → {t("발전량", "generation")} →{" "}
+            {t("V2G 배차", "V2G dispatch")}
+          </small>
         </div>
       </section>
 
       <section
+        className="live-generation-grid"
+        aria-label={t(
+          "현재 날씨 기반 발전 현황",
+          "Weather-based generation status",
+        )}
+      >
+        <article className="current-weather-card">
+          <div className="weather-card-head">
+            <span className="weather-main-icon">
+              <CloudSun size={25} />
+            </span>
+            <div>
+              <span>{weatherSource}</span>
+              <strong>{current.temperature}°</strong>
+              <small>
+                {weatherConditionFor(
+                  current.condition,
+                  language,
+                )}
+              </small>
+            </div>
+          </div>
+          <div className="weather-factor-list">
+            <div>
+              <span>
+                <Compass size={14} />{" "}
+                {t("태양 위치", "Sun Position")}
+              </span>
+              <strong>
+                {compassDirectionFor(
+                  generation.sunDirection,
+                  language,
+                )}{" "}
+                · {t("고도", "Altitude")}{" "}
+                {generation.sunAltitudeDegrees}°
+              </strong>
+            </div>
+            <div>
+              <span>
+                <Cloud size={14} />{" "}
+                {t("구름량", "Cloud Cover")}
+              </span>
+              <strong>{current.cloudCover}%</strong>
+            </div>
+            <div>
+              <span>
+                <ThermometerSun size={14} />{" "}
+                {t("강수", "Precipitation")}
+              </span>
+              <strong>
+                {current.precipitation > 0
+                  ? `${current.precipitation}mm`
+                  : t("없음", "None")}
+              </strong>
+            </div>
+          </div>
+        </article>
+
+        <article className="generation-card solar-generation">
+          <div className="generation-card-head">
+            <span className="generation-icon"><Sun size={20} /></span>
+            <div>
+              <span>
+                {t(
+                  "현재 태양광 예상 출력",
+                  "Estimated Solar Output Now",
+                )}
+              </span>
+              <strong>{(generation.solarGenerationKw / 1000).toFixed(2)}<small>MW</small></strong>
+            </div>
+            <span className="utilization-chip">
+              {generation.solarUtilizationPercent}%{" "}
+              {t("가동", "of capacity")}
+            </span>
+          </div>
+          <div className="generation-progress">
+            <i style={{ width: `${generation.solarUtilizationPercent}%` }} />
+          </div>
+          <div className="factor-chips">
+            <span>{t("일사량", "Solar Irradiance")} <strong>{current.solarRadiation}W/㎡</strong></span>
+            <span>{t("태양 고도", "Solar Altitude")} <strong>{generation.sunAltitudeDegrees}°</strong></span>
+            <span>{t("운량", "Cloud Cover")} <strong>{current.cloudCover}%</strong></span>
+            <span>{t("온도 보정", "Temperature Factor")} <strong>{Math.round(generation.temperatureFactor * 100)}%</strong></span>
+          </div>
+          <div className="generation-explain">
+            <ArrowDownToLine size={16} />
+            <p>
+              {language === "ko" ? (
+                <>
+                  현재 발전·수요와 연결 차량을 기준으로{" "}
+                  <strong>
+                    {formatPower(
+                      estimatedChargePowerKw,
+                      language,
+                    )}kW
+                  </strong>
+                  를 V2G 충전에 배정할 수 있습니다.
+                </>
+              ) : (
+                <>
+                  Based on current generation, demand and
+                  connected vehicles,{" "}
+                  <strong>
+                    {formatPower(
+                      estimatedChargePowerKw,
+                      language,
+                    )}{" "}
+                    kW
+                  </strong>{" "}
+                  can be allocated to V2G charging.
+                </>
+              )}
+            </p>
+          </div>
+        </article>
+
+        <article className="generation-card wind-generation">
+          <div className="generation-card-head">
+            <span className="generation-icon"><Wind size={20} /></span>
+            <div>
+              <span>
+                {t(
+                  "현재 풍력 예상 출력",
+                  "Estimated Wind Output Now",
+                )}
+              </span>
+              <strong>{(generation.windGenerationKw / 1000).toFixed(2)}<small>MW</small></strong>
+            </div>
+            <span className="utilization-chip">
+              {generation.windUtilizationPercent}%{" "}
+              {t("가동", "of capacity")}
+            </span>
+          </div>
+          <div className="generation-progress">
+            <i style={{ width: `${generation.windUtilizationPercent}%` }} />
+          </div>
+          <div className="factor-chips">
+            <span>{t("허브 풍속", "Hub-height Wind Speed")} <strong>{current.windSpeed}m/s</strong></span>
+            <span>{t("기압", "Air Pressure")} <strong>{current.pressure}hPa</strong></span>
+            <span>{t("출력계수", "Output Factor")} <strong>{Math.round(generation.windFactor * 100)}%</strong></span>
+          </div>
+          <div className="generation-explain">
+            <Gauge size={16} />
+            <p>
+              {language === "ko" ? (
+                <>
+                  <strong>
+                    {windZoneFor(
+                      generation.windOperatingZone,
+                      language,
+                    )}
+                  </strong>
+                  으로 판단해 풍력 설비용량{" "}
+                  {formatPower(
+                    generation.windCapacityKw,
+                    language,
+                  )}
+                  kW에 출력곡선을 적용했습니다.
+                </>
+              ) : (
+                <>
+                  Classified as{" "}
+                  <strong>
+                    {windZoneFor(
+                      generation.windOperatingZone,
+                      language,
+                    )}
+                  </strong>
+                  ; the turbine power curve is applied to{" "}
+                  {formatPower(
+                    generation.windCapacityKw,
+                    language,
+                  )}{" "}
+                  kW of installed wind capacity.
+                </>
+              )}
+            </p>
+          </div>
+        </article>
+      </section>
+
+      <section
         className="stat-grid"
-        aria-label="핵심 운영 지표"
+        aria-label={t(
+          "핵심 운영 지표",
+          "Key operating metrics",
+        )}
       >
         <StatCard
-          label="예상 재생에너지"
+          label={t(
+            "예상 재생에너지",
+            "Forecast Renewable Energy",
+          )}
           value={stats.renewableEnergyMWh}
           unit="MWh"
-          detail="오늘 24시간 합계"
+          detail={t(
+            "오늘 24시간 합계",
+            "Today’s 24-hour Total",
+          )}
           icon={Leaf}
         />
         <StatCard
-          label="예상 전력 수요"
+          label={t(
+            "예상 전력 수요",
+            "Forecast Electricity Demand",
+          )}
           value={stats.demandEnergyMWh}
           unit="MWh"
-          detail={`피크 ${stats.peakHour}`}
+          detail={t(
+            `피크 ${stats.peakHour}`,
+            `Peak ${stats.peakHour}`,
+          )}
           icon={Zap}
           tone="blue"
         />
         <StatCard
-          label="V2G 참여 차량"
+          label={t(
+            "V2G 참여 차량",
+            "Participating V2G Vehicles",
+          )}
           value={stats.participatingVehicles}
-          unit="대"
-          detail={`전체 ${schedules.length}대 중 연결·동의`}
+          unit={t("대", " vehicles")}
+          detail={t(
+            `전체 ${schedules.length}대 중 연결·동의`,
+            `Of ${schedules.length} vehicles · connected and opted in`,
+          )}
           icon={CarFront}
           tone="violet"
         />
+        <article className="stat-card surplus-stat-card">
+          <button
+            type="button"
+            className="surplus-kpi-button"
+            aria-expanded={surplusExpanded}
+            aria-controls="surplus-absorption-detail"
+            onClick={() =>
+              setSurplusExpanded((expanded) => !expanded)
+            }
+          >
+            <span className="stat-icon mint">
+              <ArrowDownToLine size={19} />
+            </span>
+            <span className="stat-copy">
+              <span className="stat-label">
+                {t(
+                  "잉여전력 흡수",
+                  "Surplus Energy Absorbed",
+                )}
+              </span>
+              <strong>
+                {stats.absorbedEnergyKWh}
+                <small>kWh</small>
+              </strong>
+              <span>
+                {t(
+                  `출력제어 ${stats.curtailmentReductionKWh}kWh 감소 예상`,
+                  `Estimated curtailment avoided: ${stats.curtailmentReductionKWh} kWh`,
+                )}
+              </span>
+            </span>
+            <span className="surplus-toggle-label">
+              {surplusExpanded
+                ? t("접기", "Hide Details")
+                : t("자세히 보기", "View Details")}
+              <ChevronRight
+                size={15}
+                aria-hidden="true"
+              />
+            </span>
+          </button>
+        </article>
         <StatCard
-          label="잉여전력 흡수"
-          value={stats.absorbedEnergyKWh}
-          unit="kWh"
-          detail={`출력제어 ${stats.curtailmentReductionKWh}kWh 감소 예상`}
-          icon={ArrowDownToLine}
-        />
-        <StatCard
-          label="피크 공급"
+          label={t("피크 공급", "Peak Energy Supplied")}
           value={stats.suppliedEnergyKWh}
           unit="kWh"
-          detail="차량 최소 SOC 보장"
+          detail={t(
+            "차량 최소 SOC 보장",
+            "Minimum Vehicle SOC Protected",
+          )}
           icon={ArrowUpFromLine}
           tone="amber"
         />
+      </section>
+
+      <section
+        id="surplus-absorption-detail"
+        className="surplus-detail-panel"
+        aria-label={t(
+          "기간별 잉여전력 흡수 상세",
+          "Surplus absorption details by period",
+        )}
+        hidden={!surplusExpanded}
+      >
+        <div className="surplus-detail-head">
+          <div>
+            <span className="section-label">
+              SURPLUS ABSORPTION OUTLOOK
+            </span>
+            <h2>
+              {t(
+                "기간별 잉여전력 흡수 전망",
+                "Surplus Absorption by Period",
+              )}
+            </h2>
+          </div>
+          <div
+            className="absorption-period-tabs"
+            role="tablist"
+            aria-label={t("조회 기간", "Projection period")}
+          >
+            {absorptionHorizons.map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                id={`absorption-tab-${id}`}
+                aria-selected={absorptionHorizon === id}
+                aria-controls="absorption-period-panel"
+                tabIndex={absorptionHorizon === id ? 0 : -1}
+                className={
+                  absorptionHorizon === id ? "active" : ""
+                }
+                onClick={() => setAbsorptionHorizon(id)}
+                onKeyDown={(event) => {
+                  const currentIndex =
+                    absorptionHorizons.findIndex(
+                      (item) => item.id === id,
+                    );
+                  let nextIndex: number | null = null;
+
+                  if (
+                    event.key === "ArrowRight" ||
+                    event.key === "ArrowDown"
+                  ) {
+                    nextIndex =
+                      (currentIndex + 1) %
+                      absorptionHorizons.length;
+                  } else if (
+                    event.key === "ArrowLeft" ||
+                    event.key === "ArrowUp"
+                  ) {
+                    nextIndex =
+                      (currentIndex -
+                        1 +
+                        absorptionHorizons.length) %
+                      absorptionHorizons.length;
+                  } else if (event.key === "Home") {
+                    nextIndex = 0;
+                  } else if (event.key === "End") {
+                    nextIndex =
+                      absorptionHorizons.length - 1;
+                  }
+
+                  if (nextIndex === null) return;
+                  event.preventDefault();
+                  const nextHorizon =
+                    absorptionHorizons[nextIndex].id;
+                  setAbsorptionHorizon(nextHorizon);
+                  window.requestAnimationFrame(() => {
+                    document
+                      .getElementById(
+                        `absorption-tab-${nextHorizon}`,
+                      )
+                      ?.focus();
+                  });
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div
+          id="absorption-period-panel"
+          role="tabpanel"
+          aria-labelledby={`absorption-tab-${absorptionHorizon}`}
+          className="absorption-metric-grid"
+          tabIndex={0}
+        >
+          <article>
+            <span>
+              {t("잉여전력 흡수량", "Energy Absorbed")}
+            </span>
+            <strong>
+              {formatPower(
+                selectedAbsorption.absorbedEnergyKWh,
+                language,
+              )}
+              <small>kWh</small>
+            </strong>
+            <p>
+              {selectedAbsorption.basis === "daily-forecast"
+                ? t(
+                    "현재 24시간 운영계획",
+                    "Current 24-hour operating plan",
+                  )
+                : t(
+                    "24시간 패턴 단순 환산",
+                    "Projection from the 24-hour pattern",
+                  )}
+            </p>
+          </article>
+          <article>
+            <span>
+              {t("출력제어 회피량", "Curtailment Avoided")}
+            </span>
+            <strong>
+              {formatPower(
+                selectedAbsorption.curtailmentReductionKWh,
+                language,
+              )}
+              <small>kWh</small>
+            </strong>
+            <p>
+              {t(
+                "흡수 전력의 86% 기준",
+                "Based on 86% of absorbed energy",
+              )}
+            </p>
+          </article>
+          <article>
+            <span>
+              {t(
+                "가구·일 환산",
+                "Household-day Equivalent",
+              )}
+            </span>
+            <strong>
+              {formatPower(
+                selectedAbsorption.householdDayEquivalents,
+                language,
+              )}
+              <small>
+                {t("가구·일", " household-days")}
+              </small>
+            </strong>
+            <p>
+              {t(
+                `약 ${formatPower(selectedAbsorption.householdDayEquivalents, language)}가구의 하루 전기사용량`,
+                `One day of electricity for about ${formatPower(selectedAbsorption.householdDayEquivalents, language)} households`,
+              )}
+            </p>
+          </article>
+          <article>
+            <span>
+              {t("흡수 피크 · 활성시간", "Peak · Active Hours")}
+            </span>
+            <strong>
+              {formatPower(
+                absorption.peakAbsorptionPowerKw,
+                language,
+              )}
+              <small>kW</small>
+            </strong>
+            <p>
+              {t(
+                `${absorption.peakAbsorptionHour} 피크 · ${projectedActiveHours}시간 활성`,
+                `Peak at ${absorption.peakAbsorptionHour} · ${projectedActiveHours} active hours`,
+              )}
+            </p>
+          </article>
+        </div>
+        <div className="surplus-assumptions">
+          <Info size={14} />
+          <p>
+            {t(
+              `가구당 하루 ${absorption.assumptions.householdDailyUseKWh}kWh, 출력제어 회피율 ${Math.round(absorption.assumptions.curtailmentAvoidanceRate * 100)}%를 가정했습니다. 1주·30일 수치는 현재 24시간 운영 패턴을 단순 환산한 시연용 전망입니다.`,
+              `Assumes ${absorption.assumptions.householdDailyUseKWh} kWh per household per day and an ${Math.round(absorption.assumptions.curtailmentAvoidanceRate * 100)}% curtailment-avoidance rate. The 7- and 30-day figures are demonstration projections extrapolated from the current 24-hour operating pattern.`,
+            )}
+          </p>
+        </div>
       </section>
 
       <section className="dashboard-grid">
@@ -461,10 +1107,19 @@ function DashboardView({
               <span className="section-label">
                 24H ENERGY FLOW
               </span>
-              <h2>시간대별 전력 수급</h2>
+              <h2>
+                {t(
+                  "시간대별 전력 수급",
+                  "Hourly Energy Supply & Demand",
+                )}
+              </h2>
             </div>
             <div className="chart-note">
-              <i /> 재생에너지 우선 충전
+              <i />{" "}
+              {t(
+                "재생에너지 우선 충전",
+                "Charge with Renewables First",
+              )}
             </div>
           </div>
           <EnergyChart data={energy} />
@@ -473,15 +1128,24 @@ function DashboardView({
         <aside className="panel dispatch-panel">
           <div className="panel-head">
             <div>
-              <span className="section-label">NOW · 11:00</span>
-              <h2>실시간 배차 현황</h2>
+              <span className="section-label">
+                NOW · {String(currentHour).padStart(2, "0")}:00
+              </span>
+              <h2>
+                {t(
+                  "실시간 배차 현황",
+                  "Live Dispatch Status",
+                )}
+              </h2>
             </div>
           </div>
           <div className="dispatch-ring">
             <div className="ring-visual">
               <span>
                 <strong>{stats.participatingVehicles}</strong>
-                <small>참여 차량</small>
+                <small>
+                  {t("참여 차량", "Participating Vehicles")}
+                </small>
               </span>
             </div>
           </div>
@@ -489,63 +1153,92 @@ function DashboardView({
             <div>
               <span>
                 <i className="charge-dot" />
-                충전 중
+                {t("충전 중", "Charging")}
               </span>
               <strong>
-                {stats.chargingVehicles}
-                <small>대</small>
+                {currentDispatch.charge}
+                <small>{t("대", " vehicles")}</small>
               </strong>
             </div>
             <div>
               <span>
                 <i className="discharge-dot" />
-                방전 중
+                {t("방전 중", "Discharging")}
               </span>
               <strong>
-                {stats.dischargingVehicles}
-                <small>대</small>
+                {currentDispatch.discharge}
+                <small>{t("대", " vehicles")}</small>
               </strong>
             </div>
             <div>
               <span>
                 <i className="standby-dot" />
-                대기
+                {t("대기", "Standby")}
               </span>
               <strong>
-                {stats.standbyVehicles}
-                <small>대</small>
+                {currentDispatch.standby}
+                <small>{t("대", " vehicles")}</small>
               </strong>
             </div>
           </div>
           <div className="grid-signal">
             <Sparkles size={17} />
             <div>
-              <strong>현재 전력망 신호</strong>
+              <strong>
+                {t("현재 전력망 신호", "Current Grid Signal")}
+              </strong>
               <span>
-                {current.surplusPowerKw > 0
-                  ? "잉여전력 흡수 권장"
-                  : "피크 지원 준비"}
+                {estimatedSurplusPowerKw > 0
+                  ? t(
+                      "잉여전력 흡수 권장",
+                      "Absorb Surplus Energy",
+                    )
+                  : t(
+                      "피크 지원 준비",
+                      "Prepare for Peak Support",
+                    )}
               </span>
             </div>
           </div>
         </aside>
       </section>
 
-      <section className="panel fleet-preview">
-        <div className="panel-head">
+      <section className="panel infrastructure-panel">
+        <div className="panel-head infrastructure-head">
           <div>
-            <span className="section-label">FLEET SCHEDULE</span>
-            <h2>렌터카 운영 스케줄</h2>
+            <span className="section-label">GRID INFRASTRUCTURE MAP</span>
+            <h2>
+              {t(
+                `${regionNameFor(region, language)} 전력 인프라 지도`,
+                `${regionNameFor(region, language)} Power Infrastructure Map`,
+              )}
+            </h2>
+            <p>
+              {t(
+                "변전소·변환소, 태양광·풍력 발전시설, 고전압 선로와 지중 케이블을 실제 공개 지도 데이터로 확인합니다.",
+                "Explore substations, converter stations, solar and wind facilities, high-voltage lines, and underground cables using public map data.",
+              )}
+            </p>
           </div>
-          <button className="text-button" onClick={onFleet}>
-            전체 차량 보기 <ChevronRight size={15} />
-          </button>
+          <span className="map-data-chip">
+            <Database size={13} />{" "}
+            {t(
+              "OpenStreetMap 기반",
+              "Powered by OpenStreetMap",
+            )}
+          </span>
         </div>
-        <VehicleTable
-          schedules={visibleSchedules}
-          onSelect={() => onFleet()}
-          compact
+        <InfrastructureMap
+          region={region}
+          language={language}
         />
+        <div className="map-source-note">
+          <Info size={13} />
+          {t(
+            "지도 데이터는 OpenStreetMap 기여자가 구축한 공개 데이터이며 실제 설비 현황과 차이가 있을 수 있습니다. 지도 설계·분석 © OpenInfraMap.",
+            "Map data is contributed by the OpenStreetMap community and may differ from actual infrastructure. Map design and analysis © OpenInfraMap.",
+          )}
+        </div>
       </section>
     </>
   );
@@ -562,19 +1255,26 @@ function VehicleTable({
   onSelect: (schedule: VehicleSchedule) => void;
   compact?: boolean;
 }) {
+  const { language } = useLanguage();
+  const t = (korean: string, english: string) =>
+    textFor(language, korean, english);
   return (
     <div className="table-scroll">
       <table className="vehicle-table">
         <thead>
           <tr>
-            <th>차량</th>
-            <th>현재 SOC</th>
-            <th>출발 / 예약</th>
+            <th>{t("차량", "Vehicle")}</th>
+            <th>{t("현재 SOC", "Current SOC")}</th>
+            <th>{t("출발 / 예약", "Departure / Booking")}</th>
             <th>V2G</th>
-            <th>현재 상태</th>
-            {!compact && <th>예상 보상</th>}
+            <th>{t("현재 상태", "Current Status")}</th>
+            {!compact && (
+              <th>{t("예상 보상", "Estimated Reward")}</th>
+            )}
             <th>
-              <span className="sr-only">상세</span>
+              <span className="sr-only">
+                {t("상세", "Details")}
+              </span>
             </th>
           </tr>
         </thead>
@@ -597,7 +1297,12 @@ function VehicleTable({
                     </i>
                     <span>
                       <strong>{vehicle.id}</strong>
-                      <small>{vehicle.model}</small>
+                      <small>
+                        {vehicleModelFor(
+                          vehicle.model,
+                          language,
+                        )}
+                      </small>
                     </span>
                   </span>
                 </td>
@@ -618,28 +1323,36 @@ function VehicleTable({
                         : "consent"
                     }
                   >
-                    {vehicle.isV2GEnabled ? "동의" : "미동의"}
+                    {vehicle.isV2GEnabled
+                      ? t("동의", "Opted In")
+                      : t("미동의", "Not Opted In")}
                   </span>
                 </td>
                 <td>
                   <span
-                    className={`status-pill ${status.className}`}
+                    className={`status-pill ${statusClassName[status]}`}
                   >
                     <i />
-                    {status.label}
+                    {statusNameFor(status, language)}
                   </span>
                 </td>
                 {!compact && (
                   <td>
                     <strong className="reward">
-                      {schedule.rewardPoints.toLocaleString()} P
+                      {schedule.rewardPoints.toLocaleString(
+                        language === "ko" ? "ko-KR" : "en-US",
+                      )}{" "}
+                      P
                     </strong>
                   </td>
                 )}
                 <td>
                   <button
                     className="row-button"
-                    aria-label={`${vehicle.id} 상세 보기`}
+                    aria-label={t(
+                      `${vehicle.id} 상세 보기`,
+                      `View details for ${vehicle.id}`,
+                    )}
                   >
                     <ChevronRight size={16} />
                   </button>
@@ -658,6 +1371,7 @@ function ScheduleStrip({
 }: {
   schedule: VehicleSchedule;
 }) {
+  const { language } = useLanguage();
   const activeItems = schedule.items.filter(
     (_, index) => index >= 7 && index <= 22,
   );
@@ -667,7 +1381,7 @@ function ScheduleStrip({
         <div
           key={item.timestamp}
           className={`schedule-hour ${item.action}`}
-          title={item.reason}
+          title={scheduleReasonFor(item.reason, language)}
         >
           <span>{item.timestamp.slice(11, 13)}</span>
           <i />
@@ -682,6 +1396,9 @@ function VehicleDetail({
 }: {
   schedule: VehicleSchedule;
 }) {
+  const { language } = useLanguage();
+  const t = (korean: string, english: string) =>
+    textFor(language, korean, english);
   const { vehicle } = schedule;
   const nextAction = schedule.items.find(
     (item) =>
@@ -698,51 +1415,65 @@ function VehicleDetail({
         </div>
         <div>
           <span>{vehicle.id}</span>
-          <h2>{vehicle.model}</h2>
+          <h2>{vehicleModelFor(vehicle.model, language)}</h2>
           <p>
             {vehicle.ownerType === "rental"
-              ? "렌터카 운영 차량"
-              : "일반 차주 차량"}
+              ? t("렌터카 운영 차량", "Rental Fleet Vehicle")
+              : t(
+                  "일반 차주 차량",
+                  "Private-owner Vehicle",
+                )}
           </p>
         </div>
       </div>
 
       <div className="battery-card">
         <div className="battery-head">
-          <span>현재 배터리</span>
+          <span>{t("현재 배터리", "Current Battery")}</span>
           <strong>{vehicle.currentSoc}%</strong>
         </div>
         <div className="battery-track">
           <i style={{ width: `${vehicle.currentSoc}%` }} />
         </div>
         <div className="battery-labels">
-          <span>최소 {vehicle.minimumSoc}%</span>
-          <span>목표 {vehicle.targetSoc}%</span>
+          <span>
+            {t("최소", "Minimum")} {vehicle.minimumSoc}%
+          </span>
+          <span>
+            {t("목표", "Target")} {vehicle.targetSoc}%
+          </span>
         </div>
       </div>
 
       <div className="detail-metrics">
         <div>
           <span>
-            <CalendarClock size={15} /> 출발 예정
+            <CalendarClock size={15} />{" "}
+            {t("출발 예정", "Scheduled Departure")}
           </span>
           <strong>{vehicle.departureTime.slice(11, 16)}</strong>
         </div>
         <div>
           <span>
-            <CircleGauge size={15} /> 예상 체류
+            <CircleGauge size={15} />{" "}
+            {t("예상 체류", "Estimated Dwell Time")}
           </span>
-          <strong>{getStayDurationHours(vehicle)}시간</strong>
+          <strong>
+            {getStayDurationHours(vehicle)}
+            {t("시간", " hours")}
+          </strong>
         </div>
         <div>
           <span>
-            <BatteryCharging size={15} /> 충전 예상
+            <BatteryCharging size={15} />{" "}
+            {t("충전 예상", "Expected Charge")}
           </span>
           <strong>{schedule.chargeEnergyKWh}kWh</strong>
         </div>
         <div>
           <span>
-            <ArrowUpFromLine size={15} /> 방전 예상
+            <ArrowUpFromLine size={15} />{" "}
+            {t("방전 예상", "Expected Discharge")}
           </span>
           <strong>{schedule.dischargeEnergyKWh}kWh</strong>
         </div>
@@ -750,22 +1481,24 @@ function VehicleDetail({
 
       <div className="detail-section">
         <div className="detail-section-head">
-          <strong>시간대별 추천</strong>
-          <span>07—22시</span>
+          <strong>
+            {t("시간대별 추천", "Hourly Recommendation")}
+          </strong>
+          <span>{t("07—22시", "07:00—22:00")}</span>
         </div>
         <ScheduleStrip schedule={schedule} />
         <div className="schedule-legend">
           <span>
             <i className="charge-dot" />
-            충전
+            {t("충전", "Charge")}
           </span>
           <span>
             <i className="discharge-dot" />
-            방전
+            {t("방전", "Discharge")}
           </span>
           <span>
             <i className="standby-dot" />
-            대기
+            {t("대기", "Standby")}
           </span>
         </div>
       </div>
@@ -775,13 +1508,21 @@ function VehicleDetail({
           <Sparkles size={17} />
         </span>
         <div>
-          <strong>다음 권장 제어</strong>
+          <strong>
+            {t(
+              "다음 권장 제어",
+              "Next Recommended Action",
+            )}
+          </strong>
           <p>
             {nextAction
               ? `${nextAction.timestamp.slice(11, 16)} ${
-                  actionLabel[nextAction.action]
-                } · ${nextAction.reason}`
-              : "출발 전 추가 제어가 필요하지 않습니다."}
+                  actionNameFor(nextAction.action, language)
+                } · ${scheduleReasonFor(nextAction.reason, language)}`
+              : t(
+                  "출발 전 추가 제어가 필요하지 않습니다.",
+                  "No additional control is required before departure.",
+                )}
           </p>
         </div>
       </div>
@@ -789,9 +1530,9 @@ function VehicleDetail({
       <div className="departure-guarantee">
         <ShieldCheck size={17} />
         <span>
-          출발 예상 SOC{" "}
-          <strong>{schedule.departureSoc}%</strong> · 최소 보장
-          충족
+          {t("출발 예상 SOC", "Expected Departure SOC")}{" "}
+          <strong>{schedule.departureSoc}%</strong> ·{" "}
+          {t("최소 보장 충족", "Minimum Guarantee Met")}
         </span>
       </div>
     </aside>
@@ -803,6 +1544,9 @@ function FleetView({
 }: {
   simulation: ReturnType<typeof runSimulation>;
 }) {
+  const { language } = useLanguage();
+  const t = (korean: string, english: string) =>
+    textFor(language, korean, english);
   const [filter, setFilter] = useState<
     "all" | "rental" | "private"
   >("all");
@@ -825,10 +1569,17 @@ function FleetView({
           <span className="eyebrow">
             <span /> VEHICLE ORCHESTRATION
           </span>
-          <h1>차량·스케줄 관리</h1>
+          <h1>
+            {t(
+              "차량·스케줄 관리",
+              "Vehicle & Schedule Management",
+            )}
+          </h1>
           <p>
-            차량별 가용시간과 배터리 보호 조건을 확인하고 추천
-            근거를 검토합니다.
+            {t(
+              "차량별 가용시간과 배터리 보호 조건을 확인하고 추천 근거를 검토합니다.",
+              "Review each vehicle’s availability, battery safeguards, and recommendation rationale.",
+            )}
           </p>
         </div>
         <div className="filter-tabs">
@@ -840,10 +1591,10 @@ function FleetView({
                 onClick={() => setFilter(item)}
               >
                 {item === "all"
-                  ? "전체"
+                  ? t("전체", "All")
                   : item === "rental"
-                    ? "렌터카"
-                    : "일반 차주"}
+                    ? t("렌터카", "Rentals")
+                    : t("일반 차주", "Private Owners")}
               </button>
             ),
           )}
@@ -856,10 +1607,19 @@ function FleetView({
               <span className="section-label">
                 CONNECTED FLEET
               </span>
-              <h2>등록 차량 {filtered.length}대</h2>
+              <h2>
+                {t(
+                  `등록 차량 ${filtered.length}대`,
+                  `${filtered.length} Registered Vehicles`,
+                )}
+              </h2>
             </div>
             <span className="small-note">
-              <i /> 시연용 합성 데이터
+              <i />{" "}
+              {t(
+                "시연용 합성 데이터",
+                "Synthetic Demo Data",
+              )}
             </span>
           </div>
           <VehicleTable
@@ -881,6 +1641,9 @@ function OwnerView({
 }: {
   simulation: ReturnType<typeof runSimulation>;
 }) {
+  const { language } = useLanguage();
+  const t = (korean: string, english: string) =>
+    textFor(language, korean, english);
   const [currentSoc, setCurrentSoc] = useState(46);
   const [targetSoc, setTargetSoc] = useState(82);
   const [minimumSoc, setMinimumSoc] = useState(35);
@@ -891,7 +1654,7 @@ function OwnerView({
     const vehicle: Vehicle = {
       id: "MY-EV",
       ownerType: "private",
-      model: "내 전기차",
+      model: textFor(language, "내 전기차", "My EV"),
       batteryCapacityKWh: 72.6,
       currentSoc,
       targetSoc: Math.max(targetSoc, minimumSoc),
@@ -916,6 +1679,7 @@ function OwnerView({
     departureHour,
     v2gEnabled,
     simulation.energy,
+    language,
   ]);
 
   const chargeHours = ownerSchedule.items.filter(
@@ -932,17 +1696,29 @@ function OwnerView({
           <span className="eyebrow">
             <span /> DRIVER PARTICIPATION
           </span>
-          <h1>내 차로 에너지 전환에 참여하세요</h1>
+          <h1>
+            {t(
+              "내 차로 에너지 전환에 참여하세요",
+              "Join the Energy Transition with Your EV",
+            )}
+          </h1>
           <p>
-            출발에 필요한 배터리는 보장하고, 주차 중 남는 시간만
-            활용합니다.
+            {t(
+              "출발에 필요한 배터리는 보장하고, 주차 중 남는 시간만 활용합니다.",
+              "We protect the battery needed for departure and use only idle parking time.",
+            )}
           </p>
         </div>
         <div className="owner-assurance">
           <ShieldCheck size={19} />
           <span>
-            <strong>이동권 우선</strong> 최소 배터리 이하 방전
-            없음
+            <strong>
+              {t("이동권 우선", "Mobility First")}
+            </strong>{" "}
+            {t(
+              "최소 배터리 이하 방전 없음",
+              "No discharge below the minimum battery level",
+            )}
           </span>
         </div>
       </section>
@@ -952,14 +1728,17 @@ function OwnerView({
           <div className="panel-head">
             <div>
               <span className="section-label">MY EV SETTINGS</span>
-              <h2>운행 계획 입력</h2>
+              <h2>{t("운행 계획 입력", "Trip Plan")}</h2>
             </div>
             <PlugZap size={21} className="panel-icon" />
           </div>
 
           <SliderField
             id="currentSoc"
-            label="현재 배터리 잔량"
+            label={t(
+              "현재 배터리 잔량",
+              "Current Battery Level",
+            )}
             value={currentSoc}
             min={20}
             max={90}
@@ -967,7 +1746,10 @@ function OwnerView({
           />
           <SliderField
             id="targetSoc"
-            label="희망 출발 잔량"
+            label={t(
+              "희망 출발 잔량",
+              "Desired Departure Level",
+            )}
             value={targetSoc}
             min={50}
             max={95}
@@ -975,7 +1757,10 @@ function OwnerView({
           />
           <SliderField
             id="minimumSoc"
-            label="최소 보장 잔량"
+            label={t(
+              "최소 보장 잔량",
+              "Minimum Guaranteed Level",
+            )}
             value={minimumSoc}
             min={20}
             max={60}
@@ -984,7 +1769,11 @@ function OwnerView({
 
           <label className="time-field">
             <span>
-              <CalendarClock size={16} /> 출발 예정 시간
+              <CalendarClock size={16} />{" "}
+              {t(
+                "출발 예정 시간",
+                "Scheduled Departure Time",
+              )}
             </span>
             <select
               value={departureHour}
@@ -1004,9 +1793,17 @@ function OwnerView({
 
           <label className="consent-toggle">
             <span>
-              <strong>V2G 방전 참여</strong>
+              <strong>
+                {t(
+                  "V2G 방전 참여",
+                  "Participate in V2G Discharge",
+                )}
+              </strong>
               <small>
-                최소 잔량과 출발 목표를 지키는 범위에서만 참여
+                {t(
+                  "최소 잔량과 출발 목표를 지키는 범위에서만 참여",
+                  "Participation stays within minimum SOC and departure-target safeguards.",
+                )}
               </small>
             </span>
             <input
@@ -1023,24 +1820,33 @@ function OwnerView({
         <section className="owner-result">
           <article className="reward-hero">
             <span className="reward-kicker">
-              오늘의 예상 리워드
+              {t(
+                "오늘의 예상 리워드",
+                "Today’s Estimated Reward",
+              )}
             </span>
             <strong>
-              {ownerSchedule.rewardPoints.toLocaleString()}
+              {ownerSchedule.rewardPoints.toLocaleString(
+                language === "ko" ? "ko-KR" : "en-US",
+              )}
               <small> P</small>
             </strong>
             <p>
-              시연 기준: 방전 1kWh당 42P, 잉여전력 충전
-              1kWh당 8P
+              {t(
+                "시연 기준: 방전 1kWh당 42P, 잉여전력 충전 1kWh당 8P",
+                "Demo rate: 42P per 1 kWh discharged and 8P per 1 kWh charged with surplus energy.",
+              )}
             </p>
             <div className="reward-energy">
               <span>
                 <ArrowDownToLine size={16} />
-                충전 {ownerSchedule.chargeEnergyKWh}kWh
+                {t("충전", "Charge")}{" "}
+                {ownerSchedule.chargeEnergyKWh}kWh
               </span>
               <span>
                 <ArrowUpFromLine size={16} />
-                방전 {ownerSchedule.dischargeEnergyKWh}kWh
+                {t("방전", "Discharge")}{" "}
+                {ownerSchedule.dischargeEnergyKWh}kWh
               </span>
             </div>
           </article>
@@ -1051,10 +1857,16 @@ function OwnerView({
                 <span className="section-label">
                   SMART SCHEDULE
                 </span>
-                <h2>오늘의 추천 일정</h2>
+                <h2>
+                  {t(
+                    "오늘의 추천 일정",
+                    "Today’s Recommended Schedule",
+                  )}
+                </h2>
               </div>
               <span className="generated-chip">
-                <Sparkles size={13} /> 자동 계산
+                <Sparkles size={13} />{" "}
+                {t("자동 계산", "Auto-calculated")}
               </span>
             </div>
             <ScheduleStrip schedule={ownerSchedule} />
@@ -1064,7 +1876,12 @@ function OwnerView({
                   <ArrowDownToLine size={17} />
                 </span>
                 <div>
-                  <small>추천 충전</small>
+                  <small>
+                    {t(
+                      "추천 충전",
+                      "Recommended Charging",
+                    )}
+                  </small>
                   <strong>
                     {chargeHours.length
                       ? chargeHours
@@ -1072,7 +1889,7 @@ function OwnerView({
                             item.timestamp.slice(11, 16),
                           )
                           .join(", ")
-                      : "없음"}
+                      : t("없음", "None")}
                   </strong>
                 </div>
               </div>
@@ -1081,7 +1898,12 @@ function OwnerView({
                   <ArrowUpFromLine size={17} />
                 </span>
                 <div>
-                  <small>추천 방전</small>
+                  <small>
+                    {t(
+                      "추천 방전",
+                      "Recommended Discharging",
+                    )}
+                  </small>
                   <strong>
                     {dischargeHours.length
                       ? dischargeHours
@@ -1089,7 +1911,7 @@ function OwnerView({
                             item.timestamp.slice(11, 16),
                           )
                           .join(", ")
-                      : "없음"}
+                      : t("없음", "None")}
                   </strong>
                 </div>
               </div>
@@ -1097,14 +1919,22 @@ function OwnerView({
             <div className="soc-outcome">
               <div className="soc-circle">
                 <strong>{ownerSchedule.departureSoc}%</strong>
-                <span>출발 예상</span>
+                <span>
+                  {t("출발 예상", "Expected at Departure")}
+                </span>
               </div>
               <div>
-                <strong>목표 배터리를 안전하게 확보합니다</strong>
+                <strong>
+                  {t(
+                    "목표 배터리를 안전하게 확보합니다",
+                    "Your Target Battery Level Will Be Secured Safely",
+                  )}
+                </strong>
                 <p>
-                  최소 보장 {minimumSoc}% 아래로 방전하지 않으며,
-                  출발이 가까워지면 전력망 신호보다 충전을
-                  우선합니다.
+                  {t(
+                    `최소 보장 ${minimumSoc}% 아래로 방전하지 않으며, 출발이 가까워지면 전력망 신호보다 충전을 우선합니다.`,
+                    `We never discharge below the minimum ${minimumSoc}% and prioritize charging over grid signals as departure approaches.`,
+                  )}
                 </p>
               </div>
             </div>
@@ -1153,52 +1983,167 @@ function SliderField({
 }
 
 export function GridFlowApp() {
+  const [language, setLanguage] = useState<Language>("ko");
   const [region, setRegion] = useState<Region>("jeju");
   const [view, setView] = useState<View>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [weatherState, setWeatherState] = useState<{
+    region: Region;
+    status: "live" | "fallback";
+    data?: WeatherHour;
+  } | null>(null);
+  const weatherStatus: WeatherConnection =
+    weatherState?.region === region
+      ? weatherState.status
+      : "loading";
+  const liveWeather =
+    weatherState?.region === region &&
+    weatherState.status === "live"
+      ? weatherState.data ?? null
+      : null;
   const simulation = useMemo(
-    () => runSimulation(region),
-    [region],
+    () => runSimulation(region, liveWeather ?? undefined),
+    [region, liveWeather],
+  );
+  const weatherTimestamp =
+    liveWeather?.timestamp ??
+    simulation.energy[DEMO_CURRENT_HOUR].timestamp;
+  const languageContextValue = useMemo(
+    () => ({ language, setLanguage }),
+    [language],
   );
 
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.title = textFor(
+      language,
+      "GridFlow | 제주·호남 V2G 에너지 운영",
+      "GridFlow | Jeju & Honam V2G Energy Operations",
+    );
+  }, [language]);
+
+  useEffect(() => {
+    let active = true;
+    let requestController: AbortController | null = null;
+    let requestTimeout: number | null = null;
+
+    const refreshWeather = () => {
+      requestController = new AbortController();
+      requestTimeout = window.setTimeout(
+        () => requestController?.abort(),
+        8_000,
+      );
+
+      void getLiveWeather(region, requestController.signal)
+        .then((data) => {
+          if (active) {
+            setWeatherState({ region, status: "live", data });
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setWeatherState({ region, status: "fallback" });
+          }
+        })
+        .finally(() => {
+          if (requestTimeout !== null) {
+            window.clearTimeout(requestTimeout);
+          }
+        });
+    };
+
+    refreshWeather();
+    const refreshInterval = window.setInterval(
+      refreshWeather,
+      15 * 60 * 1_000,
+    );
+
+    return () => {
+      active = false;
+      window.clearInterval(refreshInterval);
+      if (requestTimeout !== null) {
+        window.clearTimeout(requestTimeout);
+      }
+      requestController?.abort();
+    };
+  }, [region]);
+
   return (
-    <div className="app-shell">
-      <Sidebar
-        view={view}
-        onView={setView}
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
-      <div className="app-main">
-        <Header
-          region={region}
-          onRegion={setRegion}
-          onMenu={() => setSidebarOpen(true)}
+    <LanguageContext.Provider value={languageContextValue}>
+      <div className="app-shell">
+        <Sidebar
+          view={view}
+          onView={setView}
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
         />
-        <main className="content">
-          {view === "dashboard" && (
-            <DashboardView
-              simulation={simulation}
-              onFleet={() => setView("fleet")}
-            />
-          )}
-          {view === "fleet" && (
-            <FleetView simulation={simulation} />
-          )}
-          {view === "owner" && (
-            <OwnerView simulation={simulation} />
-          )}
-          <footer className="data-notice">
-            <Info size={15} />
-            <span>
-              본 화면의 날씨·발전량·수요·차량 데이터는 서비스
-              검증을 위한 시연용 추정값이며 실제 계통 운영 또는
-              정산에 사용할 수 없습니다.
-            </span>
-            <span>모델 v0.1 · 규칙 기반</span>
-          </footer>
-        </main>
+        <div className="app-main">
+          <Header
+            region={region}
+            onRegion={setRegion}
+            onMenu={() => setSidebarOpen(true)}
+            weatherStatus={weatherStatus}
+            weatherTimestamp={weatherTimestamp}
+          />
+          <main className="content">
+            {view === "dashboard" && (
+              <DashboardView
+                simulation={simulation}
+                liveWeather={liveWeather}
+                weatherStatus={weatherStatus}
+              />
+            )}
+            {view === "fleet" && (
+              <FleetView simulation={simulation} />
+            )}
+            {view === "owner" && (
+              <OwnerView simulation={simulation} />
+            )}
+            <footer className="data-notice">
+              <Info size={15} />
+              <span>
+                {language === "ko" ? (
+                  <>
+                    현재 기상은{" "}
+                    <a
+                      href="https://open-meteo.com/"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open-Meteo
+                    </a>{" "}
+                    모델값이며 발전량·수요·차량 데이터는 서비스
+                    검증을 위한 시연용 추정값입니다. 실제 계통 운영
+                    또는 정산에 사용할 수 없습니다.
+                  </>
+                ) : (
+                  <>
+                    Current weather uses{" "}
+                    <a
+                      href="https://open-meteo.com/"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open-Meteo
+                    </a>{" "}
+                    model data. Generation, demand, and vehicle
+                    data are demonstration estimates for service
+                    validation and must not be used for actual grid
+                    operations or settlement.
+                  </>
+                )}
+              </span>
+              <span>
+                {textFor(
+                  language,
+                  "모델 v0.1 · 규칙 기반",
+                  "Model v0.1 · Rules-based",
+                )}
+              </span>
+            </footer>
+          </main>
+        </div>
       </div>
-    </div>
+    </LanguageContext.Provider>
   );
 }

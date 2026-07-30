@@ -73,6 +73,32 @@ export interface DashboardStats {
   suppliedEnergyKWh: number;
   curtailmentReductionKWh: number;
   peakHour: string;
+  surplusAbsorption: SurplusAbsorptionInsight;
+}
+
+export type AbsorptionHorizon = "day" | "week" | "month";
+
+export interface AbsorptionPeriodMetric {
+  horizon: AbsorptionHorizon;
+  days: 1 | 7 | 30;
+  absorbedEnergyKWh: number;
+  curtailmentReductionKWh: number;
+  householdDayEquivalents: number;
+  basis: "daily-forecast" | "scaled-projection";
+}
+
+export interface SurplusAbsorptionInsight {
+  periods: Record<
+    AbsorptionHorizon,
+    AbsorptionPeriodMetric
+  >;
+  peakAbsorptionPowerKw: number;
+  peakAbsorptionHour: string;
+  activeAbsorptionHours: number;
+  assumptions: {
+    householdDailyUseKWh: 10;
+    curtailmentAvoidanceRate: 0.86;
+  };
 }
 
 export interface SimulationResult {
