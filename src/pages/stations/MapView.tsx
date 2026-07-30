@@ -14,11 +14,13 @@ import {
   createStationIcon,
   createUserLocationIcon,
   createPartnerStoreIcon,
+  createAttractionIcon,
 } from '@/components/map/stationIcon';
 import { LocationSourceBadge } from '@/components/map/LocationSourceBadge';
 import { CurrentLocationButton } from '@/components/map/CurrentLocationButton';
 import { LocationPermissionNotice } from '@/components/map/LocationPermissionNotice';
 import { STATIONS, STATION_FILTERS } from '@/data/stations';
+import { ATTRACTIONS, ATTRACTION_CATEGORY_ICONS } from '@/data/attractions';
 import { partnerStoreById, partnerStoresForStation } from '@/data/partnerStores';
 import { DEFAULT_MAP_ZOOM } from '@/data/location';
 import { filterStations } from '@/utils/stationFilters';
@@ -48,6 +50,8 @@ export default function MapView() {
     searchParams.get('filter') === 'fast' ? ['급속'] : []
   );
   const [locating, setLocating] = useState(false);
+  /** 관광지 레이어 표시 여부 (기본 켜짐) */
+  const [showAttractions, setShowAttractions] = useState(true);
   /**
    * Leaflet 인스턴스는 ref가 아니라 state로 들고 있는다.
    * ref로 두면 최초 렌더의 effect 시점에 아직 null이라 딥링크 중심 이동이 조용히 무시된다.
@@ -191,6 +195,59 @@ export default function MapView() {
             </Marker>
           ))}
 
+          {/* 관광지 레이어 — 충전소보다 아래에 깔아 마커가 가리지 않게 한다 */}
+          {showAttractions &&
+            ATTRACTIONS.map((spot) => (
+              <Marker
+                key={spot.id}
+                position={[spot.lat, spot.lng]}
+                icon={createAttractionIcon(ATTRACTION_CATEGORY_ICONS[spot.category])}
+                zIndexOffset={-200}
+              >
+                <Popup>
+                  <div style={{ width: 200 }}>
+                    {spot.photo && (
+                      <img
+                        src={spot.photo}
+                        alt={spot.name}
+                        loading="lazy"
+                        style={{
+                          width: '100%',
+                          height: 110,
+                          objectFit: 'cover',
+                          borderRadius: 8,
+                          marginBottom: 6,
+                          display: 'block',
+                        }}
+                      />
+                    )}
+                    <strong style={{ fontSize: 14 }}>{spot.name}</strong>
+                    <div style={{ color: '#70757a', fontSize: 11, margin: '2px 0 4px' }}>
+                      {spot.category} · 평균 체류 {Math.round(spot.averageStayMinutes / 6) / 10}시간
+                      {' · '}
+                      {spot.admissionFeeWon === 0
+                        ? '무료'
+                        : `${spot.admissionFeeWon.toLocaleString('ko-KR')}원`}
+                    </div>
+                    <div style={{ fontSize: 12 }}>{spot.description}</div>
+                    {spot.photoCredit && (
+                      <div style={{ color: '#9aa0a6', fontSize: 10, marginTop: 6, lineHeight: 1.4 }}>
+                        사진 {spot.photoCredit}
+                        {spot.photoSource && (
+                          <>
+                            {' · '}
+                            <a href={spot.photoSource} target="_blank" rel="noreferrer noopener">
+                              출처
+                            </a>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+
           {filtered.map((station) => (
             <Marker
               key={station.id}
@@ -221,6 +278,9 @@ export default function MapView() {
         </div>
 
         <div className="pointer-events-auto flex gap-2 overflow-x-auto scrollbar-hide">
+          <FilterChip active={showAttractions} onClick={() => setShowAttractions((v) => !v)}>
+            🗺️ 관광지
+          </FilterChip>
           {STATION_FILTERS.map((f) => (
             <FilterChip key={f} active={activeFilters.includes(f)} onClick={() => toggleFilter(f)}>
               {f}
@@ -237,7 +297,8 @@ export default function MapView() {
             onUseHotelLocation={handleUseHotelLocation}
           />
           <span className="shrink-0 whitespace-nowrap rounded-chip bg-card px-2.5 py-1 text-[11px] font-bold text-text shadow-card">
-            {filtered.length}개 충전소
+            충전소 {filtered.length}
+            {showAttractions && ` · 관광지 ${ATTRACTIONS.length}`}
           </span>
           {focusedStore && (
             <button

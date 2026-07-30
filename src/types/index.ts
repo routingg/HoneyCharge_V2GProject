@@ -121,6 +121,31 @@ export interface Reward {
   precautions: string[];
 }
 
+export type AttractionCategory = '자연' | '해변' | '산책' | '문화' | '체험' | '시장';
+
+/**
+ * 지도에 표시하는 제주 관광지. 충전소와는 별개 레이어다.
+ * 좌표는 근사치이며 체류시간·입장료는 시연용 추정치.
+ */
+export interface Attraction {
+  id: string;
+  name: string;
+  category: AttractionCategory;
+  lat: number;
+  lng: number;
+  address: string;
+  averageStayMinutes: number;
+  admissionFeeWon: number;
+  description: string;
+  /** 위키미디어 공용 썸네일 URL */
+  photo?: string;
+  /** 저작자 / 라이선스 — 표기 의무가 있으므로 사진과 함께 저장한다 */
+  photoCredit?: string;
+  /** 위키미디어 파일 설명 페이지 */
+  photoSource?: string;
+  isMock: boolean;
+}
+
 export type PartnerStoreCategory =
   | 'cafe'
   | 'restaurant'

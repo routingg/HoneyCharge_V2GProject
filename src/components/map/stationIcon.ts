@@ -71,6 +71,29 @@ export function createUserLocationIcon(label = '현재 위치'): L.DivIcon {
   });
 }
 
+/**
+ * 관광지 마커 — 충전소(원형 초록/노랑 ⚡)와 확실히 구분되도록
+ * 흰 배경 + 청록 테두리의 물방울형 핀으로 그린다.
+ */
+export function createAttractionIcon(emoji: string): L.DivIcon {
+  return L.divIcon({
+    className: 'honeycharge-attraction-marker',
+    html: `
+      <div style="
+        width:28px;height:28px;
+        background:#ffffff;border:2.5px solid #0891B2;
+        border-radius:9999px 9999px 9999px 2px;
+        transform:rotate(-45deg);
+        box-shadow:0 2px 6px rgba(0,0,0,0.28);
+        display:flex;align-items:center;justify-content:center;
+      "><span style="transform:rotate(45deg);font-size:14px;line-height:1;">${emoji}</span></div>
+    `,
+    iconSize: [28, 28],
+    iconAnchor: [14, 28],
+    popupAnchor: [0, -26],
+  });
+}
+
 /** 제휴 매장 마커 (충전소·현재 위치와 구분되는 골드 사각 핀) */
 export function createPartnerStoreIcon(label: string): L.DivIcon {
   const safeLabel = escapeHtml(label);
