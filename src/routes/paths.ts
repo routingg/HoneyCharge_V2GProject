@@ -33,4 +33,5 @@ export const PATHS = {
   settings: '/settings',
   support: '/support',
   supportFaq: '/support/faq',
+  supportChat: '/support/chat',
 } as const;

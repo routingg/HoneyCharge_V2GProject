@@ -10,9 +10,15 @@ export default function Support() {
   const { notReady } = useToast();
 
   const CONTACTS = [
-    { icon: Phone, label: '전화 문의', desc: '평일 09:00 - 18:00', action: notReady },
-    { icon: MessageCircle, label: '실시간 채팅 상담', desc: '24시간 운영', action: notReady },
-    { icon: Mail, label: '이메일 문의', desc: 'support@honeycharge.kr', action: notReady },
+    { icon: Phone, label: '전화 문의', desc: '평일 09:00 - 18:00', action: notReady, highlight: false },
+    {
+      icon: MessageCircle,
+      label: '실시간 채팅 상담',
+      desc: 'AI 상담원이 24시간 답변해요',
+      action: () => navigate(PATHS.supportChat),
+      highlight: true,
+    },
+    { icon: Mail, label: '이메일 문의', desc: 'support@honeycharge.kr', action: notReady, highlight: false },
   ];
 
   return (
@@ -36,7 +42,13 @@ export default function Support() {
         <Card padded={false} className="divide-y divide-border">
           {CONTACTS.map((c) => (
             <button key={c.label} type="button" onClick={c.action} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-bg text-text-secondary">
+              <span
+                className={
+                  c.highlight
+                    ? 'flex h-11 w-11 items-center justify-center rounded-full bg-light-yellow text-dark-gold'
+                    : 'flex h-11 w-11 items-center justify-center rounded-full bg-bg text-text-secondary'
+                }
+              >
                 <c.icon size={18} aria-hidden="true" />
               </span>
               <span className="flex-1">

@@ -85,7 +85,7 @@ mock 데이터의 `distanceKm` 초기값은 `applyDistances()`가 사용자 위�
 
 ---
 
-## 구현된 페이지 (34개 라우트)
+## 구현된 페이지 (35개 라우트)
 
 | # | 이름 | 경로 |
 |---|---|---|
@@ -123,8 +123,59 @@ mock 데이터의 `distanceKm` 초기값은 `applyDistances()`가 사용자 위�
 | 32 | 설정 (데모 모드 포함) | `/settings` |
 | 33 | 고객지원 | `/support` |
 | 34 | FAQ | `/support/faq` |
+| 35 | 실시간 채팅 상담 (Claude API) | `/support/chat` |
 
 이 외 `*` 경로는 404(`NotFound`) 페이지로 연결됩니다.
+
+---
+
+## 실시간 채팅 상담 (Claude API 연동)
+
+`/support/chat`은 이 프로토타입에서 **유일하게 실제 외부 API를 호출하는 기능**입니다.
+Anthropic Messages API(`claude-opus-5`)로 FAQ와 서비스 컨텍스트에 근거한 상담 답변을 스트리밍합니다.
+
+### 설정
+
+프로젝트 루트에 `.env`를 만들고 키를 넣습니다(`.gitignore`에 `*.env`가 등록되어 있습니다).
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+> ⚠️ **`VITE_` 접두사를 붙이지 마세요.** Vite는 `VITE_`가 붙은 변수만 클라이언트 번들에 주입합니다.
+> 접두사 없이 두면 키는 Node 프로세스 안에만 존재하고 `dist/`에는 포함되지 않습니다.
+
+키가 없으면 채팅 화면은 정상적으로 열리되 전송 시 `503`과 안내 문구를 표시합니다.
+
+### 구조
+
+```
+브라우저  ──POST /api/support-chat──▶  Vite 서버 미들웨어 (Node)
+                                            │  ANTHROPIC_API_KEY (서버 전용)
+                                            ▼
+                                      Anthropic Messages API
+          ◀──────  NDJSON 스트림  ──────────┘
+```
+
+| 파일 | 역할 |
+|---|---|
+| `vite.config.ts` | `/api/support-chat` 프록시 (`configureServer` + `configurePreviewServer`) |
+| `src/data/supportFaq.ts` | FAQ 원본 — 화면과 시스템 프롬프트가 공유 |
+| `src/data/supportContext.ts` | 시스템 프롬프트, 입력 제한, 추천 질문 |
+| `src/hooks/useSupportChat.ts` | NDJSON 스트림 파싱 및 대화 상태 |
+| `src/pages/support/SupportChat.tsx` | 채팅 UI (스트리밍 표시, 중단, 새로 시작) |
+
+- 모델 `claude-opus-5`, `effort: 'low'` + adaptive thinking, `max_tokens: 8192`, 스트리밍
+- 응답 형식: `{"type":"delta"|"done"|"error", ...}` 줄 단위 JSON
+- 서버에서 메시지 수(30개)·길이(2,000자)·본문 크기(256KB)를 검증합니다
+- 시스템 프롬프트에 "SOC 금지", "가상 데이터임을 밝힐 것", "모르면 지어내지 말 것" 규칙을 포함했습니다
+
+### 제약
+
+- **`npm run dev` / `npm run preview`에서만 동작합니다.** `dist/`만 정적 호스팅하면 프록시가 없어
+  서버리스 함수(Vercel/Netlify Functions 등)로 같은 핸들러를 옮겨야 합니다.
+- `@anthropic-ai/sdk`는 서버에서만 쓰이므로 `devDependencies`에 있습니다(클라이언트 번들 미포함).
+- 대화 내용은 저장되지 않으며 새로고침하면 초기화됩니다.
 
 ## 주요 사용자 플로우
 
@@ -365,8 +416,9 @@ src/
 - 홈의 환경 기여 수치(2,140kWh / 512kg / 36회), 리워드 홈의 "이번 달 적립·기여도" — 화면 표시용 고정값
 - 사용자 선호 카테고리(`MOCK_PREFERRED_CATEGORIES`) — 이용 이력 학습이 아닌 고정값
 - 충전 세션의 실시간 값은 `setInterval` 시뮬레이션 (실제 충전기 연동 없음)
-- 카카오 로그인, 경로 안내, 전화/실시간 채팅 상담, 다크 모드, 개인정보/약관 상세 화면
+- 카카오 로그인, 경로 안내, 전화·이메일 문의, 다크 모드, 개인정보/약관 상세 화면
   → 클릭 시 "준비 중입니다" 토스트만 표시
+  (**실시간 채팅 상담은 실제 Claude API로 동작합니다** — 위 섹션 참고)
 - 리뷰 작성 기능은 없고 조회만 가능
 
 ## npm run build 결과
