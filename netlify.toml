@@ -44,7 +44,7 @@
       style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
       font-src 'self' https://cdn.jsdelivr.net;
       img-src 'self' data: blob: https://images.unsplash.com https://api.dicebear.com https://*.tile.openstreetmap.org;
-      connect-src 'self';
+      connect-src 'self' https://honeycharge-energy-api.onrender.com;
       worker-src 'self' blob:
     """
 

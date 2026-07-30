@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+joblib
+pandas
+numpy
+scikit-learn
+# ⚠️ 버전 고정 필수.
+# lightgbm 4.7.0에서는 이 모델들의 언피클된 Booster 네이티브 핸들이 NULL이 되어
+# predict 호출 시 OSError(access violation)로 프로세스가 죽는다. 4.5.0에서 정상 동작.
+lightgbm==4.5.0
+xgboost
+pydantic

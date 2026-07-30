@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sun, Wind, Clock, Coins, Leaf, TreePine, Repeat, ChevronRight, Zap } from 'lucide-react';
+import { Sun, Wind, Clock, Coins, Leaf, TreePine, Repeat, ChevronRight, Zap, Sparkles } from 'lucide-react';
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { Card } from '@/components/common/Card';
 import { BatteryGauge } from '@/components/charging/BatteryGauge';
@@ -243,6 +243,27 @@ export default function Home() {
             className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-1 rounded-button bg-light-yellow text-sm font-bold text-dark-gold"
           >
             추천 자세히 보기
+            <ChevronRight size={16} aria-hidden="true" />
+          </button>
+        </Card>
+
+        {/* AI 에너지 예측 (실시간 ML) */}
+        <Card className="border-info/30 bg-info/5">
+          <div className="mb-2 flex items-center gap-1.5">
+            <Sparkles size={16} className="text-info" aria-hidden="true" />
+            <h3 className="text-[15px] font-bold text-text">AI 에너지 예측</h3>
+            <StatusBadge label="실시간 ML" tone="success" />
+          </div>
+          <p className="text-sm leading-relaxed text-text-secondary">
+            공공데이터로 학습한 모델이 전력수요·태양광·풍력 발전량을 예측해
+            지금 충전할지, V2G에 참여할지 알려드려요.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate(PATHS.aiEnergyDemo)}
+            className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-1 rounded-button border border-info/40 text-sm font-bold text-info"
+          >
+            지금 예측해보기
             <ChevronRight size={16} aria-hidden="true" />
           </button>
         </Card>

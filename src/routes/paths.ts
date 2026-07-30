@@ -34,4 +34,5 @@ export const PATHS = {
   support: '/support',
   supportFaq: '/support/faq',
   supportChat: '/support/chat',
+  aiEnergyDemo: '/ai-energy-demo',
 } as const;

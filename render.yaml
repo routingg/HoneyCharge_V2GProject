@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: honeycharge-energy-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ALLOWED_ORIGINS
+        value: https://peaceful-kitsune-896019.netlify.app
+      - key: PYTHON_VERSION
+        value: 3.11.9

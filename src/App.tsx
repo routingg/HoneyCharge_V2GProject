@@ -40,6 +40,7 @@ import MonthlyReport from '@/pages/reports/MonthlyReport';
 import Support from '@/pages/support/Support';
 import Faq from '@/pages/support/Faq';
 import SupportChat from '@/pages/support/SupportChat';
+import AIEnergyDemo from '@/pages/energy/AIEnergyDemo';
 import NotFound from '@/pages/NotFound';
 
 function Protected({ children }: { children: ReactNode }) {
@@ -93,6 +94,7 @@ export default function App() {
             <Route path={PATHS.support} element={<Protected><Support /></Protected>} />
             <Route path={PATHS.supportFaq} element={<Protected><Faq /></Protected>} />
             <Route path={PATHS.supportChat} element={<Protected><SupportChat /></Protected>} />
+            <Route path={PATHS.aiEnergyDemo} element={<Protected><AIEnergyDemo /></Protected>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

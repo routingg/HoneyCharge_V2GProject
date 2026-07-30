@@ -1,0 +1,469 @@
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import os
+import re
+from datetime import datetime
+from pathlib import Path
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+
+import pandas as pd
+
+
+MODEL_ROOT = Path(__file__).resolve().parents[1]
+WEATHER_VARIABLES = [
+    "temperature_2m",
+    "apparent_temperature",
+    "relative_humidity_2m",
+    "precipitation",
+    "cloud_cover",
+    "pressure_msl",
+    "wind_speed_10m",
+    "wind_speed_100m",
+    "wind_direction_100m",
+    "wind_gusts_10m",
+    "shortwave_radiation",
+]
+
+
+def load_env(path: Path) -> None:
+    if not path.exists():
+        return
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+
+
+def load_config() -> dict:
+    return json.loads(
+        (MODEL_ROOT / "live_input_config.json").read_text(encoding="utf-8")
+    )
+
+
+def read_csv_auto(path: Path) -> pd.DataFrame:
+    for encoding in ("utf-8-sig", "cp949", "euc-kr"):
+        try:
+            return pd.read_csv(path, encoding=encoding)
+        except UnicodeDecodeError:
+            continue
+    raise UnicodeDecodeError("csv", b"", 0, 1, f"인코딩을 판별하지 못했습니다: {path}")
+
+
+def get_json(url: str, params: dict, timeout: int = 30) -> dict:
+    query = urlencode(params)
+    request = Request(
+        f"{url}?{query}",
+        headers={"User-Agent": "jeju-total-model/1.0"},
+    )
+    with urlopen(request, timeout=timeout) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def fetch_open_meteo(
+    target: pd.Timestamp,
+    weather_config: dict,
+    historical: bool,
+) -> tuple[dict, str]:
+    target = pd.Timestamp(target).floor("h")
+    base_params = {
+        "latitude": weather_config["latitude"],
+        "longitude": weather_config["longitude"],
+        "hourly": ",".join(WEATHER_VARIABLES),
+        "wind_speed_unit": "ms",
+        "timezone": weather_config["timezone"],
+    }
+    if historical:
+        endpoint = "https://archive-api.open-meteo.com/v1/archive"
+        date_text = target.strftime("%Y-%m-%d")
+        base_params.update({"start_date": date_text, "end_date": date_text})
+    else:
+        endpoint = "https://api.open-meteo.com/v1/forecast"
+        base_params.update({"forecast_days": 2})
+
+    payload = get_json(endpoint, base_params)
+    hourly = payload["hourly"]
+    target_text = target.strftime("%Y-%m-%dT%H:%M")
+    try:
+        index = hourly["time"].index(target_text)
+    except ValueError as exc:
+        raise ValueError(
+            f"Open-Meteo 응답에 예측시각이 없습니다: {target_text}"
+        ) from exc
+
+    direction_rad = math.radians(float(hourly["wind_direction_100m"][index]))
+    weather = {
+        "temperature_c": float(hourly["temperature_2m"][index]),
+        "apparent_temperature_c": float(
+            hourly["apparent_temperature"][index]
+        ),
+        "relative_humidity_pct": float(
+            hourly["relative_humidity_2m"][index]
+        ),
+        "rainfall_mm": float(hourly["precipitation"][index]),
+        "cloud_cover_pct": float(hourly["cloud_cover"][index]),
+        "pressure_msl_hpa": float(hourly["pressure_msl"][index]),
+        "wind_speed_ms": float(hourly["wind_speed_10m"][index]),
+        "wind_speed_100m_ms": float(hourly["wind_speed_100m"][index]),
+        "wind_direction_100m_sin": math.sin(direction_rad),
+        "wind_direction_100m_cos": math.cos(direction_rad),
+        "wind_gusts_10m_ms": float(hourly["wind_gusts_10m"][index]),
+        "solar_irradiance_wm2": float(hourly["shortwave_radiation"][index]),
+    }
+    return weather, f"{endpoint}?{urlencode(base_params)}"
+
+
+def load_historical_demand(path: Path) -> pd.Series:
+    frame = read_csv_auto(path)
+    date_column = frame.columns[0]
+    hour_columns = [
+        column for column in frame.columns[1:] if re.search(r"\d+", str(column))
+    ]
+    long = frame.melt(
+        id_vars=[date_column],
+        value_vars=hour_columns,
+        var_name="hour",
+        value_name="demand_mw",
+    )
+    hour = long["hour"].astype(str).str.extract(r"(\d+)")[0].astype(int) - 1
+    long["timestamp"] = pd.to_datetime(long[date_column]) + pd.to_timedelta(
+        hour, unit="h"
+    )
+    long["demand_mw"] = pd.to_numeric(long["demand_mw"], errors="coerce")
+    return long.set_index("timestamp")["demand_mw"].sort_index()
+
+
+def load_historical_generation(path: Path) -> pd.DataFrame:
+    frame = read_csv_auto(path)
+    frame = frame.iloc[:, :4].copy()
+    frame.columns = ["date", "hour", "fuel", "value_mwh"]
+    hour = pd.to_numeric(frame["hour"], errors="coerce") - 1
+    frame["timestamp"] = pd.to_datetime(frame["date"]) + pd.to_timedelta(
+        hour, unit="h"
+    )
+    frame["value_mwh"] = pd.to_numeric(
+        frame["value_mwh"], errors="coerce"
+    ).fillna(0)
+    fuel_map = {
+        "신재생(태양광)": "solar_mw",
+        "신재생(풍력)": "wind_mw",
+    }
+    frame["target"] = frame["fuel"].map(fuel_map)
+    frame = frame.dropna(subset=["target"])
+    return (
+        frame.pivot_table(
+            index="timestamp",
+            columns="target",
+            values="value_mwh",
+            aggfunc="sum",
+        )
+        .rename_axis(columns=None)
+        .sort_index()
+    )
+
+
+def load_wind_curtailment(path: Path) -> pd.Series:
+    frame = read_csv_auto(path)
+    required = {"timestamp", "wind_curtailment_mwh"}
+    missing = required - set(frame.columns)
+    if missing:
+        raise ValueError(
+            f"풍력 출력제어 파일에 열이 없습니다: {sorted(missing)}"
+        )
+    frame["timestamp"] = pd.to_datetime(frame["timestamp"])
+    frame["wind_curtailment_mwh"] = pd.to_numeric(
+        frame["wind_curtailment_mwh"], errors="raise"
+    )
+    return (
+        frame.set_index("timestamp")["wind_curtailment_mwh"]
+        .sort_index()
+        .rename("wind_curtailment_mwh")
+    )
+
+
+def value_at(series: pd.Series, timestamp: pd.Timestamp, label: str) -> float:
+    if timestamp not in series.index:
+        raise KeyError(f"{label}의 {timestamp} 값이 없습니다.")
+    return float(series.loc[timestamp])
+
+
+def build_historical_case(config: dict) -> tuple[Path, Path]:
+    case = config["historical_case"]
+    target = pd.Timestamp(case["target_timestamp"])
+    demand = load_historical_demand(MODEL_ROOT / case["demand_file"])
+    generation = load_historical_generation(
+        MODEL_ROOT / case["generation_file"]
+    )
+    wind_curtailment = load_wind_curtailment(
+        MODEL_ROOT / case["wind_curtailment_file"]
+    )
+    generation["wind_available_mw"] = (
+        generation["wind_mw"]
+        + wind_curtailment.reindex(generation.index).fillna(0.0)
+    )
+    weather, weather_request = fetch_open_meteo(
+        target, config["weather"], historical=True
+    )
+    capacity = config["manual_capacity"]
+
+    row = {
+        "timestamp": target,
+        "solar_capacity_mw": float(capacity["solar_capacity_mw"]),
+        "wind_capacity_mw": float(capacity["wind_capacity_mw"]),
+        "generation_capacity_mw": float(capacity["solar_capacity_mw"])
+        + float(capacity["wind_capacity_mw"]),
+        "v2g_mw": 0.0,
+        **weather,
+    }
+    for lag in (1, 24, 168):
+        lag_time = target - pd.Timedelta(hours=lag)
+        row[f"demand_lag_{lag}h"] = value_at(
+            demand, lag_time, "제주 수요"
+        )
+        row[f"solar_lag_{lag}h"] = value_at(
+            generation["solar_mw"], lag_time, "제주 태양광"
+        )
+        row[f"wind_lag_{lag}h"] = value_at(
+            generation["wind_available_mw"],
+            lag_time,
+            "제주 잠재 풍력",
+        )
+
+    input_path = MODEL_ROOT / case["input_file"]
+    input_path.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame([row]).to_csv(
+        input_path, index=False, encoding="utf-8-sig"
+    )
+
+    official_curtailment = value_at(
+        wind_curtailment, target, "KPX 제주 풍력 출력제어량"
+    )
+    configured_curtailment = float(
+        case["official_hourly_wind_curtailment_mwh"]
+    )
+    if official_curtailment != configured_curtailment:
+        raise ValueError(
+            "설정 파일과 공식 시간별 출력제어량이 다릅니다: "
+            f"공식={official_curtailment}, 설정={configured_curtailment}"
+        )
+
+    actual_row = {
+        "timestamp": target,
+        "actual_demand_mw": value_at(demand, target, "제주 수요"),
+        "actual_solar_mw": value_at(
+            generation["solar_mw"], target, "제주 태양광"
+        ),
+        "actual_wind_mw": value_at(
+            generation["wind_mw"], target, "제주 풍력"
+        ),
+        "official_wind_curtailment_mwh": official_curtailment,
+    }
+    actual_row["actual_wind_available_mw"] = (
+        actual_row["actual_wind_mw"]
+        + actual_row["official_wind_curtailment_mwh"]
+    )
+    actual_row["actual_renewable_mw"] = (
+        actual_row["actual_solar_mw"] + actual_row["actual_wind_mw"]
+    )
+    actual_row["actual_net_load_mw"] = (
+        actual_row["actual_demand_mw"]
+        - actual_row["actual_renewable_mw"]
+    )
+    actual_path = MODEL_ROOT / case["actual_file"]
+    actual_path.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame([actual_row]).to_csv(
+        actual_path, index=False, encoding="utf-8-sig"
+    )
+
+    metadata = {
+        "case_type": "historical_pseudo_realtime_replay",
+        "target_timestamp": str(target),
+        "forecast_horizon": "one_hour_ahead",
+        "selection_basis": case["selection_basis"],
+        "official_event": {
+            "daily_wind_curtailment_mwh": case[
+                "official_daily_wind_curtailment_mwh"
+            ],
+            "selected_hour_wind_curtailment_mwh": case[
+                "official_hourly_wind_curtailment_mwh"
+            ],
+            "control_window": case["official_control_window"],
+            "controlled_capacity_wind_mw": case[
+                "official_controlled_capacity_wind_mw"
+            ],
+            "controlled_capacity_solar_mw": case[
+                "official_controlled_capacity_solar_mw"
+            ],
+            "minimum_demand_mw": case["official_minimum_demand_mw"],
+            "minimum_demand_hour": case["official_minimum_demand_hour"],
+        },
+        "weather_source": weather_request,
+        "lag_sources": {
+            "demand": str(MODEL_ROOT / case["demand_file"]),
+            "solar_wind": str(MODEL_ROOT / case["generation_file"]),
+            "wind_curtailment": str(
+                MODEL_ROOT / case["wind_curtailment_file"]
+            ),
+        },
+        "manual_capacity": capacity,
+        "important_limitations": [
+            "The models are trained only on 2025 data; 2024 curtailment data are used only to reconstruct this historical replay input and are not used for training.",
+            "Wind lags and the wind model target use measured output plus KPX hourly wind curtailment as estimated available generation.",
+            "KPX hourly curtailment values are rounded estimates derived from output at disconnection and duration.",
+            "Solar remains measured market transaction output because KPX does not publish solar curtailment energy.",
+            "The official curtailment event included network constraints that the simplified HVDC dispatch does not model.",
+        ],
+    }
+    metadata_path = MODEL_ROOT / case["metadata_file"]
+    metadata_path.write_text(
+        json.dumps(metadata, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return input_path, actual_path
+
+
+def recursively_find_items(value) -> list[dict]:
+    if isinstance(value, dict):
+        if "baseDatetime" in value:
+            return [value]
+        found = []
+        for child in value.values():
+            found.extend(recursively_find_items(child))
+        return found
+    if isinstance(value, list):
+        found = []
+        for child in value:
+            found.extend(recursively_find_items(child))
+        return found
+    return []
+
+
+def fetch_kpx_today(kpx_config: dict, service_key: str) -> pd.DataFrame:
+    payload = get_json(
+        kpx_config["endpoint"],
+        {
+            "serviceKey": service_key,
+            "pageNo": 1,
+            "numOfRows": 300,
+            "_type": "json",
+        },
+    )
+    items = recursively_find_items(payload)
+    if not items:
+        raise RuntimeError(
+            "KPX 응답에서 제주 5분 계통자료를 찾지 못했습니다. "
+            f"응답: {json.dumps(payload, ensure_ascii=False)[:500]}"
+        )
+    rows = []
+    for item in items:
+        rows.append(
+            {
+                "timestamp": pd.to_datetime(
+                    str(item["baseDatetime"]), format="%Y%m%d%H%M%S"
+                ),
+                "demand_mw": float(item["currPwrTot"]),
+                "solar_mw": float(item["renewPwrSolar"]),
+                "wind_mw": float(item["renewPwrWind"]),
+            }
+        )
+    return pd.DataFrame(rows).sort_values("timestamp")
+
+
+def update_kpx_history(new_data: pd.DataFrame, history_path: Path) -> pd.DataFrame:
+    history_path.parent.mkdir(parents=True, exist_ok=True)
+    if history_path.exists():
+        history = pd.read_csv(history_path, parse_dates=["timestamp"])
+        combined = pd.concat([history, new_data], ignore_index=True)
+    else:
+        combined = new_data.copy()
+    combined = (
+        combined.drop_duplicates("timestamp", keep="last")
+        .sort_values("timestamp")
+        .reset_index(drop=True)
+    )
+    combined.to_csv(history_path, index=False, encoding="utf-8-sig")
+    return combined
+
+
+def build_live_input(config: dict, target_arg: str | None) -> Path:
+    load_env(MODEL_ROOT / ".env")
+    service_key = os.environ.get("DATA_GO_KR_SERVICE_KEY", "").strip()
+    if not service_key:
+        raise RuntimeError(
+            "KPX 호출에는 DATA_GO_KR_SERVICE_KEY가 필요합니다. "
+            ".env.example을 복사하여 .env를 만들고 키를 입력하세요."
+        )
+    now = pd.Timestamp(datetime.now()).floor("min")
+    target = (
+        pd.Timestamp(target_arg).floor("h")
+        if target_arg
+        else now.floor("h") + pd.Timedelta(hours=1)
+    )
+    kpx = fetch_kpx_today(config["kpx"], service_key)
+    history_path = MODEL_ROOT / config["kpx"]["history_file"]
+    history = update_kpx_history(kpx, history_path)
+    hourly = history.set_index("timestamp").resample("1h").mean()
+    weather, _ = fetch_open_meteo(
+        target, config["weather"], historical=False
+    )
+    capacity = config["manual_capacity"]
+    row = {
+        "timestamp": target,
+        "solar_capacity_mw": float(capacity["solar_capacity_mw"]),
+        "wind_capacity_mw": float(capacity["wind_capacity_mw"]),
+        "generation_capacity_mw": float(capacity["solar_capacity_mw"])
+        + float(capacity["wind_capacity_mw"]),
+        "v2g_mw": 0.0,
+        **weather,
+    }
+    for lag in (1, 24, 168):
+        lag_time = target - pd.Timedelta(hours=lag)
+        if lag_time not in hourly.index or hourly.loc[lag_time].isna().any():
+            raise RuntimeError(
+                f"KPX 누적자료에 {lag_time} 값이 없습니다. "
+                "실시간 API 자료를 최소 7일 누적해야 합니다."
+            )
+        for target_name in ("demand", "solar", "wind"):
+            row[f"{target_name}_lag_{lag}h"] = float(
+                hourly.loc[lag_time, f"{target_name}_mw"]
+            )
+    output_path = MODEL_ROOT / "data" / "input" / "live_input.csv"
+    pd.DataFrame([row]).to_csv(
+        output_path, index=False, encoding="utf-8-sig"
+    )
+    return output_path
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--mode",
+        choices=("historical", "live"),
+        default="historical",
+    )
+    parser.add_argument(
+        "--target",
+        help="live 모드의 예측시각. 생략하면 현재시각의 다음 정시",
+    )
+    args = parser.parse_args()
+    config = load_config()
+    if args.mode == "historical":
+        input_path, actual_path = build_historical_case(config)
+        result = {
+            "mode": "historical_pseudo_realtime",
+            "input": str(input_path),
+            "actual": str(actual_path),
+        }
+    else:
+        input_path = build_live_input(config, args.target)
+        result = {"mode": "live", "input": str(input_path)}
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

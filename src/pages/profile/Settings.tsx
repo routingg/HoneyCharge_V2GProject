@@ -165,6 +165,14 @@ export default function Settings() {
         </Card>
 
         <Card className="flex flex-col divide-y divide-border">
+          <button
+            type="button"
+            onClick={() => navigate(PATHS.aiEnergyDemo)}
+            className="flex min-h-[48px] items-center gap-2 py-2 text-sm text-text"
+          >
+            <Sparkles size={16} className="text-dark-gold" aria-hidden="true" />
+            AI 에너지 예측 (실험실)
+          </button>
           <button type="button" onClick={notReady} className="flex min-h-[48px] items-center gap-2 py-2 text-sm text-text">
             <ShieldCheck size={16} className="text-text-secondary" aria-hidden="true" />
             개인정보 관리

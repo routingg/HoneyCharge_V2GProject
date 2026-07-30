@@ -4,11 +4,14 @@
 재생에너지 발전량, 전력 수요, 출발 예정 시간, 배터리 잔량을 분석해 충전·방전을 추천하고,
 참여에 대한 보상을 포인트로 지급하는 서비스를 발표용으로 시연할 수 있도록 구현했습니다.
 
-실제 백엔드는 존재하지 않으며, 모든 데이터는 `src/data/`의 mock 데이터와 `zustand` + `localStorage`로 동작합니다.
+대부분의 데이터는 실제 백엔드 없이 `src/data/`의 mock 데이터와 `zustand` + `localStorage`로 동작합니다.
+다만 **AI 에너지 예측**(`/ai-energy-demo`)은 `backend/`의 FastAPI + LightGBM/XGBoost 모델을 실제로 호출합니다(아래 참고).
 
 ---
 
 ## 실행 방법
+
+### 1) 프론트엔드
 
 ```bash
 npm install
@@ -16,6 +19,58 @@ npm run dev       # http://localhost:5173
 npm run build     # 프로덕션 빌드 (dist/)
 npm run preview   # 빌드 결과 미리보기
 ```
+
+### 2) AI 에너지 예측 백엔드 (선택, `/ai-energy-demo` 화면에 필요)
+
+`npm run dev`는 프론트엔드만 실행합니다. AI 에너지 예측 화면은 별도 터미널에서
+FastAPI 백엔드를 함께 띄워야 동작합니다.
+
+```bash
+cd backend
+pip install -r requirements.txt   # 최초 1회
+uvicorn main:app --reload --port 8001
+```
+
+- 프론트엔드는 기본적으로 `http://127.0.0.1:8001`을 호출합니다(`src/services/energyPredictionApi.ts`).
+  다른 주소를 쓰려면 루트 `.env`에 `VITE_ENERGY_API_BASE_URL`을 설정하세요.
+- 백엔드를 띄우지 않으면 화면 자체는 열리지만 "예측 서버에 연결할 수 없어요" 오류가 표시됩니다.
+- `lightgbm`은 **4.5.0으로 버전이 고정**되어 있습니다(`backend/requirements.txt` 주석 참고).
+  4.7.0에서는 언피클된 모델의 네이티브 핸들이 깨져 예측 호출 시 프로세스가 죽는 문제가 있었습니다.
+- 헬스체크: `GET http://127.0.0.1:8001/api/health` → 모델 3종(`demand`/`solar`/`wind`) 로드 여부 확인 가능.
+- 자세한 구조는 아래 [AI 에너지 예측 (FastAPI + ML 모델)](#ai-에너지-예측-fastapi--ml-모델) 섹션 참고.
+
+### 3) 백엔드 배포 (Render, 배포 사이트에서도 AI 예측이 필요할 때)
+
+배포된 Netlify 사이트(`https://peaceful-kitsune-896019.netlify.app`)에서도 AI 예측이 동작하려면
+FastAPI 백엔드를 별도로 호스팅해야 합니다. Render 기준 절차입니다.
+
+```bash
+# 1) backend/ + models/ 가 아직 git에 커밋되지 않았다면 먼저 커밋·푸시
+git add backend models render.yaml
+git commit -m "Add AI energy prediction backend"
+git push
+
+# 2) Render 대시보드 → New → Blueprint → 이 저장소 선택
+#    루트의 render.yaml을 자동 인식해 서비스가 생성됩니다.
+#    서비스 이름은 반드시 "honeycharge-energy-api" 로 유지하세요
+#    (netlify.toml CSP의 connect-src에 이 도메인이 하드코딩되어 있습니다).
+
+# 3) 배포 완료 후 확인
+curl https://honeycharge-energy-api.onrender.com/api/health
+```
+
+이후 **Netlify 대시보드 → Site configuration → Environment variables**에 아래를 추가하고 재배포합니다.
+
+```
+VITE_ENERGY_API_BASE_URL = https://honeycharge-energy-api.onrender.com
+```
+
+> ⚠️ Render 무료 플랜은 15분 이상 요청이 없으면 슬립 상태가 되어, 첫 요청 응답이 30초~1분 정도 걸릴 수 있습니다.
+> 발표 직전에는 헬스체크 요청을 한 번 미리 보내 깨워두는 것을 권장합니다.
+
+> ⚠️ 서비스 이름을 다르게 지었다면 `netlify.toml`의 `connect-src`와 `backend/main.py`의
+> `DEFAULT_ORIGINS`(또는 Render의 `ALLOWED_ORIGINS` 환경변수)를 실제 도메인으로 맞춰야 합니다.
+> 이 두 곳이 어긋나면 브라우저가 CSP 또는 CORS로 요청을 차단합니다.
 
 ### 테스트 계정
 
@@ -124,8 +179,11 @@ mock 데이터의 `distanceKm` 초기값은 `applyDistances()`가 사용자 위�
 | 33 | 고객지원 | `/support` |
 | 34 | FAQ | `/support/faq` |
 | 35 | 실시간 채팅 상담 (Claude API) | `/support/chat` |
+| 36 | AI 에너지 예측 (FastAPI + ML) | `/ai-energy-demo` |
 
 이 외 `*` 경로는 404(`NotFound`) 페이지로 연결됩니다.
+
+`/ai-energy-demo`는 하단 탭·홈 화면에는 노출되지 않고, **설정(`/settings`) → "AI 에너지 예측"** 버튼으로만 진입합니다.
 
 ---
 
@@ -221,6 +279,66 @@ SUPPORT_CHAT_PASSCODE  = <발표용 암호>
 - 레이트 리밋은 서버리스 인스턴스 메모리 기반이라 완전한 차단을 보장하지 않습니다.
   실서비스라면 Netlify Blobs·Upstash 등 외부 저장소 기반으로 교체해야 합니다.
 
+## AI 에너지 예측 (FastAPI + ML 모델)
+
+`/ai-energy-demo`는 실시간 채팅 상담과 더불어 **실제 백엔드를 호출하는 두 번째 기능**입니다.
+제주 지역 공공데이터(전력수요, 기상 관측)로 학습한 LightGBM/XGBoost 회귀 모델 3종(전력수요·태양광·풍력)을
+FastAPI 서버에서 서빙하고, 결과를 규칙 기반 로직으로 해석해 충전/V2G 추천을 보여줍니다.
+
+### 구조
+
+```
+브라우저 (/ai-energy-demo)
+  │  GET  /api/health           서버·모델·데이터 로드 상태 확인
+  │  POST /api/predict/energy   예측 요청
+  ▼
+backend/main.py (FastAPI, uvicorn --port 8001)
+  ├─ model_service.py   3개 joblib 모델 로드 및 predict
+  ├─ data_service.py    models/*.csv 기반 피처 조립 (실측 or 시간대 시뮬레이션)
+  ├─ config.py          모델 피처 순서, 추천 임계값, 경로 상수
+  └─ schemas.py          요청 바디(PredictRequest) 검증
+```
+
+| 파일 | 역할 |
+|---|---|
+| `backend/main.py` | FastAPI 앱, `/api/health`·`/api/predict/energy` 엔드포인트, 규칙 기반 추천(`_recommend`) |
+| `backend/model_service.py` | `models/*.joblib` 로드, 피처 순서 맞춰 `predict()` 실행 |
+| `backend/data_service.py` | `models/historical_realtime_*.csv`에서 피처 조립, 결측 시 `DataUnavailable` |
+| `backend/config.py` | `DEMAND_FEATURES`/`SOLAR_FEATURES`/`WIND_FEATURES` 순서, 잉여/부족 판정 임계값 |
+| `backend/schemas.py` | `PredictRequest` pydantic 스키마 |
+| `models/*.joblib` | 학습된 모델 3종 (`demand`/`solar`/`wind`) |
+| `models/historical_realtime_2024-05-16_1300.csv` | 예측 입력용 실측 공공데이터 1행 |
+| `src/services/energyPredictionApi.ts` | 프론트 API 클라이언트 (`fetchHealth`, `predictEnergy`) |
+| `src/pages/energy/AIEnergyDemo.tsx` | 입력 폼(배터리 조건, 시뮬레이션 시각) + 결과 화면 |
+| `src/components/prediction/PredictionCard.tsx` | 예측값 카드 UI |
+| `render.yaml` | Render Blueprint 배포 설정 (백엔드 클라우드 호스팅용) |
+
+홈 대시보드와 AI 추천 상세(`/ai-schedule`)에도 실시간 예측 요약 카드가 노출됩니다
+(`src/pages/home/Home.tsx`, `src/pages/home/AiScheduleDetail.tsx`). 백엔드가 꺼져 있으면 두 화면 모두
+조용히 실패하고 기존 mock 데이터/추천만 보여줍니다(페이지 전체가 깨지지 않습니다).
+
+### 동작 방식
+
+- 기본은 CSV에 저장된 **2024-05-16 13:00 실측치 1건**을 기준으로 예측합니다.
+- 화면의 "시뮬레이션 시각" 스테퍼를 움직이면 해당 실측 행을 태양광 일사 곡선·전형적 부하 곡선으로
+  근사 스케일링해 다른 시간대를 **근사 시뮬레이션**합니다(`data_service.build_simulated_features`).
+  → 결과 카드의 "데이터 유형: 시간대 시뮬레이션(근사)" 문구로 구분됩니다.
+- 추천 로직(`CHARGE`/`V2G_AVAILABLE`/`HOLD`/`INSUFFICIENT_DATA`)은 재생에너지-수요 비율과
+  차량의 현재/목표/최소 보장 배터리, V2G 지원 여부를 기준으로 `backend/config.py`의 임계값에 따라 결정됩니다.
+
+### 알려진 제약
+
+- 데모용 CSV에 시각이 1건만 들어있어 실제로는 그 시각을 기준으로 한 근사 시뮬레이션만 가능합니다
+  (다른 날짜·시각의 실측 예측은 지원하지 않습니다).
+- `lightgbm`은 4.5.0에 고정되어야 합니다(위 실행 방법 참고). 다른 버전으로 설치하면
+  모델 로드는 되지만 `predict` 호출 시 프로세스가 죽을 수 있습니다.
+- CORS는 `backend/main.py`의 `DEFAULT_ORIGINS`(로컬 포트 + 배포 도메인) + `ALLOWED_ORIGINS` 환경변수로 결정됩니다.
+  목록에 없는 출처에서 호출하면 CORS 에러가 납니다.
+- 배포 사이트(`netlify.toml`)는 CSP `connect-src`가 `'self'`와 지정된 백엔드 도메인으로 제한되어 있습니다.
+  다른 백엔드 도메인을 쓰면 CORS를 맞춰도 브라우저가 CSP로 요청 자체를 막으니 `connect-src`도 함께 수정해야 합니다.
+
+---
+
 ## 주요 사용자 플로우
 
 - **A. 충전 추천 적용**: 스플래시 → 온보딩 → 로그인 → 홈 → AI 추천 상세 → 스케줄 적용 → 참여 확인 → 충전 진행(실시간 배터리 잔량/포인트) → 충전 완료
@@ -243,7 +361,8 @@ V2G 참여 · 충전 일시정지/재개/종료 · 배터리 잔량·포인트 �
 충전 보장 계산 및 보장 불가 시 대안 액션 · 주변 매장 추천 정렬(거리/가치/시간 적합) 및 카테고리·교환 가능 필터 ·
 매장 위치 지도 표시(`/map?store=...`).
 
-아직 실제 백엔드가 필요한 기능(길찾기, 카카오 로그인, 실시간 채팅 상담 등)은 "아직 준비 중인 기능이에요" 토스트로 피드백을 제공합니다.
+아직 실제 백엔드가 필요한 기능(길찾기, 카카오 로그인 등)은 "아직 준비 중인 기능이에요" 토스트로 피드백을 제공합니다.
+(**실시간 채팅 상담**은 Claude API로, **AI 에너지 예측**은 로컬 FastAPI + ML 모델로 실제 동작합니다 — 위 각 섹션 참고.)
 
 ---
 
