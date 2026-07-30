@@ -2,6 +2,7 @@ import { Zap, MapPin, Star, Heart, BatteryCharging } from 'lucide-react';
 import type { Station } from '@/types';
 import { ImageWithFallback } from '@/components/common/ImageWithFallback';
 import { StatusBadge } from '@/components/common/StatusBadge';
+import { formatDistance } from '@/utils/calculateDistance';
 import { cn } from '@/utils/cn';
 
 interface StationCardProps {
@@ -52,7 +53,7 @@ export function StationCard({ station, isFavorite = false, onToggleFavorite, onC
         </div>
         <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-text-secondary">
           <MapPin size={12} aria-hidden="true" />
-          {station.address} · {station.distanceKm}km
+          {station.address} · {formatDistance(station.distanceKm)}
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <StatusBadge label={`사용가능 ${station.availableChargers}/${station.totalChargers}`} tone={availTone} />

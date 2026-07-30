@@ -77,9 +77,9 @@ export default function VehicleDetail() {
         <Card>
           <h3 className="mb-3 text-[15px] font-bold text-text">충전 설정</h3>
           <dl className="grid grid-cols-2 gap-y-2.5 text-sm">
-            <dt className="text-text-secondary">목표 SOC</dt>
+            <dt className="text-text-secondary">목표 충전량</dt>
             <dd className="text-right font-semibold text-text">{chargingSettings.targetSoc}%</dd>
-            <dt className="text-text-secondary">최소 보장 SOC</dt>
+            <dt className="text-text-secondary">최소 보장 배터리</dt>
             <dd className="text-right font-semibold text-text">{chargingSettings.minSoc}%</dd>
             <dt className="text-text-secondary">출발 예정 시간</dt>
             <dd className="text-right font-semibold text-text">{chargingSettings.departureTime}</dd>

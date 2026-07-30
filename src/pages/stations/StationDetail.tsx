@@ -1,6 +1,7 @@
+import { useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
-import { Navigation, Star, Share2, MapPin, Clock, Zap, ParkingCircle, Tag, MessageSquareText } from 'lucide-react';
+import { Navigation, Star, Share2, MapPin, Clock, Zap, ParkingCircle, Tag, MessageSquareText, Info } from 'lucide-react';
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { Card } from '@/components/common/Card';
 import { ImageWithFallback } from '@/components/common/ImageWithFallback';
@@ -8,10 +9,12 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { PrimaryButton } from '@/components/common/PrimaryButton';
 import { EmptyState } from '@/components/common/EmptyState';
 import { createStationIcon } from '@/components/map/stationIcon';
+import { NearbyRewardSection } from '@/components/rewards/NearbyRewardSection';
 import { STATIONS } from '@/data/stations';
 import { reviewsForStation } from '@/data/reviews';
 import { useAppStore } from '@/store/useAppStore';
 import { useToast } from '@/hooks/useToast';
+import { applyDistances, formatDistance } from '@/utils/calculateDistance';
 import { PATHS } from '@/routes/paths';
 
 export default function StationDetail() {
@@ -20,8 +23,30 @@ export default function StationDetail() {
   const { showToast, notReady } = useToast();
   const favorites = useAppStore((s) => s.favoriteStationIds);
   const toggleFavorite = useAppStore((s) => s.toggleFavoriteStation);
-  const station = STATIONS.find((s) => s.id === stationId);
+  const setSelectedStation = useAppStore((s) => s.setSelectedStation);
+  const userLocation = useAppStore((s) => s.userLocation);
+  const chargingSession = useAppStore((s) => s.chargingSession);
+
+  const station = useMemo(() => {
+    const found = STATIONS.find((s) => s.id === stationId);
+    if (!found) return undefined;
+    return applyDistances([found], userLocation)[0];
+  }, [stationId, userLocation]);
+
   const reviews = station ? reviewsForStation(station.id) : [];
+
+  // 사용자가 이 충전소를 열어보면 전역 "기준 충전소"로 저장한다
+  useEffect(() => {
+    if (station) setSelectedStation(station.id);
+  }, [station, setSelectedStation]);
+
+  const remainingChargingMinutes =
+    chargingSession && chargingSession.phase !== 'completed'
+      ? Math.max(
+          0,
+          Math.round((new Date(chargingSession.estimatedCompletionAt).getTime() - Date.now()) / 60000)
+        )
+      : null;
 
   if (!station) {
     return (
@@ -70,7 +95,10 @@ export default function StationDetail() {
             </div>
             <p className="mt-1 flex items-center gap-1 text-sm text-text-secondary">
               <MapPin size={13} aria-hidden="true" />
-              {station.address} · {station.distanceKm}km
+              {station.address}
+            </p>
+            <p className="mt-0.5 text-sm font-semibold text-info">
+              {userLocation.name}에서 {formatDistance(station.distanceKm)}
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               <StatusBadge label={`사용가능 ${station.availableChargers}/${station.totalChargers}`} tone={station.availableChargers === 0 ? 'danger' : 'success'} />
@@ -116,6 +144,21 @@ export default function StationDetail() {
               <p className="mt-1 text-sm text-text">{station.partnerBenefit}</p>
             </Card>
           )}
+
+          <NearbyRewardSection
+            stationId={station.id}
+            title="이 충전소 주변 혜택"
+            description="충전하는 동안 걸어서 다녀올 수 있는 곳이에요"
+            limit={4}
+            variant="list"
+            remainingChargingMinutes={remainingChargingMinutes}
+            onSeeAll={() => navigate(PATHS.rewards)}
+          />
+
+          <p className="flex items-start gap-1.5 text-[11px] text-text-secondary">
+            <Info size={12} className="mt-0.5 shrink-0" aria-hidden="true" />
+            이 충전소 정보는 발표 시연용 mock 데이터이며 실제 운영 여부를 검증하지 않았습니다.
+          </p>
 
           <Card padded={false} className="overflow-hidden">
             <div className="h-36 w-full">

@@ -10,6 +10,7 @@ import { Toggle } from '@/components/common/Toggle';
 import { PrimaryButton } from '@/components/common/PrimaryButton';
 import { useAppStore } from '@/store/useAppStore';
 import { formatPoints } from '@/utils/format';
+import { BATTERY_LABELS, V2G_EXPLAINER } from '@/utils/formatBatteryText';
 import { PATHS } from '@/routes/paths';
 
 export default function ParticipateSettings() {
@@ -44,7 +45,7 @@ export default function ParticipateSettings() {
 
   const handleNext = () => {
     if (minSoc >= targetSoc) {
-      setError('최소 보장 SOC는 목표 SOC보다 낮아야 해요');
+      setError('최소 보장 배터리는 목표 충전량보다 낮아야 해요');
       return;
     }
     const now = new Date();
@@ -76,18 +77,32 @@ export default function ParticipateSettings() {
         <PageHeader title="충전 목표를 설정해 주세요" subtitle={`현재 배터리 ${vehicle.currentSoc}%`} />
 
         <Card className="flex flex-col gap-5">
-          <Slider label="목표 SOC" value={targetSoc} onChange={setTargetSoc} min={minSoc + 5} max={100} formatValue={(v) => `${v}%`} />
+          <Slider
+            label={BATTERY_LABELS.target}
+            value={targetSoc}
+            onChange={setTargetSoc}
+            min={minSoc + 5}
+            max={100}
+            formatValue={(v) => `${v}%`}
+          />
           <div className="flex items-center justify-between">
-            <span className="text-sm text-text-secondary">목표 SOC 직접 조정</span>
-            <Stepper value={targetSoc} onChange={setTargetSoc} min={minSoc + 5} max={100} unit="%" label="목표 SOC" />
+            <span className="text-sm text-text-secondary">목표 충전량 직접 조정</span>
+            <Stepper value={targetSoc} onChange={setTargetSoc} min={minSoc + 5} max={100} unit="%" label={BATTERY_LABELS.target} />
           </div>
         </Card>
 
         <Card className="flex flex-col gap-5">
-          <Slider label="최소 보장 SOC" value={minSoc} onChange={setMinSoc} min={5} max={targetSoc - 5} formatValue={(v) => `${v}%`} />
+          <Slider
+            label={BATTERY_LABELS.minimum}
+            value={minSoc}
+            onChange={setMinSoc}
+            min={5}
+            max={targetSoc - 5}
+            formatValue={(v) => `${v}%`}
+          />
           <div className="flex items-center justify-between">
-            <span className="text-sm text-text-secondary">최소 SOC 직접 조정</span>
-            <Stepper value={minSoc} onChange={setMinSoc} min={5} max={targetSoc - 5} unit="%" label="최소 보장 SOC" />
+            <span className="text-sm text-text-secondary">최소 {minSoc}%는 항상 남겨둘게요</span>
+            <Stepper value={minSoc} onChange={setMinSoc} min={5} max={targetSoc - 5} unit="%" label={BATTERY_LABELS.minimum} />
           </div>
         </Card>
 
@@ -106,9 +121,9 @@ export default function ParticipateSettings() {
 
         <Card className="flex flex-col divide-y divide-border">
           <div className="flex items-center justify-between py-2.5">
-            <div>
-              <p className="text-sm font-semibold text-text">V2G 방전 허용</p>
-              <p className="text-xs text-text-secondary">전력 수요 피크 시 배터리 전력을 판매해요</p>
+            <div className="min-w-0 pr-2">
+              <p className="text-sm font-semibold text-text">V2G 참여 허용</p>
+              <p className="text-xs text-text-secondary">{V2G_EXPLAINER}</p>
             </div>
             <Toggle checked={allowV2g} onChange={setAllowV2g} label="V2G 방전 허용" />
           </div>
@@ -122,7 +137,7 @@ export default function ParticipateSettings() {
           </div>
           <div className="flex items-center justify-between py-2.5">
             <div>
-              <p className="text-sm font-semibold text-text">최대 방전량</p>
+              <p className="text-sm font-semibold text-text">최대 나눔 출력</p>
               <p className="text-xs text-text-secondary">{allowV2g ? '' : 'V2G를 허용하면 설정할 수 있어요'}</p>
             </div>
             <Stepper
@@ -150,7 +165,7 @@ export default function ParticipateSettings() {
             <div className="flex items-center gap-2">
               <Zap size={16} className="text-dark-gold" aria-hidden="true" />
               <div>
-                <p className="text-xs text-text-secondary">출발 예상 SOC</p>
+                <p className="text-xs text-text-secondary">{BATTERY_LABELS.departure}</p>
                 <p className="font-bold text-text">{estimate.expectedDepartureSoc}%</p>
               </div>
             </div>

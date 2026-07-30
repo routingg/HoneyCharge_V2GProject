@@ -37,7 +37,7 @@ export default function VehicleMain() {
                 </h2>
                 <p className="text-xs text-text-secondary">{vehicle.batteryCapacityKwh}kWh · {vehicle.modelYear}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  <StatusBadge label={`SOC ${vehicle.currentSoc}%`} tone="neutral" />
+                  <StatusBadge label={`배터리 ${vehicle.currentSoc}%`} tone="neutral" />
                   <StatusBadge
                     label={vehicle.connected ? '연결됨' : '연결 안됨'}
                     tone={vehicle.connected ? 'success' : 'neutral'}

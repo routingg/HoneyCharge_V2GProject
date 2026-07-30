@@ -45,12 +45,26 @@ export interface Vehicle {
 
 export type ConnectorType = 'DC 콤보' | 'AC 완속' | 'DC 차데모';
 
+/** 사용자 위치 기준이 어디에서 왔는지 구분한다. */
+export type LocationSource = 'browser' | 'hotel-default' | 'demo';
+
+export interface UserLocation {
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+}
+
 export interface Station {
   id: string;
   name: string;
   lat: number;
   lng: number;
   address: string;
+  /**
+   * 초기 mock 거리(km). 앱 실행 중에는 `applyDistances()`가 사용자 위치 기준으로
+   * 좌표에서 다시 계산한 값으로 덮어쓴다.
+   */
   distanceKm: number;
   totalChargers: number;
   availableChargers: number;
@@ -68,6 +82,8 @@ export interface Station {
   rating: number;
   reviewCount: number;
   category: string;
+  /** 발표 시연을 위해 추가한 가상 충전소임을 표시한다. */
+  isMock?: boolean;
 }
 
 export interface Review {
@@ -82,7 +98,9 @@ export interface Review {
 export type RewardCategory =
   | '전체'
   | '카페'
+  | '식당'
   | '편의점'
+  | '쇼핑'
   | '렌터카'
   | '세차'
   | '관광'
@@ -101,6 +119,41 @@ export interface Reward {
   description: string;
   howToUse: string[];
   precautions: string[];
+}
+
+export type PartnerStoreCategory =
+  | 'cafe'
+  | 'restaurant'
+  | 'convenience'
+  | 'shopping'
+  | 'tourism'
+  | 'carwash';
+
+export type PartnerBenefitType = 'discount' | 'free-item' | 'coupon' | 'point-back';
+
+/**
+ * 충전소 주변 제휴 매장. 전부 시연용 가상 데이터이며 실제 제휴 업체가 아니다.
+ * `rewardId`로 기존 리워드 교환 플로우(`/rewards/:rewardId`)와 연결된다.
+ */
+export interface PartnerStore {
+  id: string;
+  name: string;
+  category: PartnerStoreCategory;
+  latitude: number;
+  longitude: number;
+  address: string;
+  image: string;
+  walkingMinutes: number;
+  distanceMeters: number;
+  averageStayMinutes: number;
+  benefitType: PartnerBenefitType;
+  benefitDescription: string;
+  requiredPoints: number;
+  estimatedValueWon: number;
+  recommendedChargingMinutes: number;
+  stationIds: string[];
+  rewardId: string;
+  isMock: boolean;
 }
 
 export interface Coupon {
@@ -235,6 +288,8 @@ export type ChargingPhase = 'charging' | 'v2g' | 'paused' | 'completed';
 export interface ChargingSession {
   id: string;
   stationName: string;
+  /** 주변 혜택 추천 연결용. 이전 버전에서 저장된 세션에는 없을 수 있다. */
+  stationId?: string;
   vehicleId: string;
   startedAt: string;
   startSoc: number;

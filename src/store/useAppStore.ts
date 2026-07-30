@@ -11,12 +11,15 @@ import type {
   AppNotification,
   AppSettings,
   ChargingResult,
+  UserLocation,
+  LocationSource,
 } from '@/types';
 import { CURRENT_USER } from '@/data/users';
 import { VEHICLES } from '@/data/vehicles';
 import { POINTS_HISTORY, CURRENT_POINTS } from '@/data/pointsHistory';
 import { RESERVATIONS } from '@/data/reservations';
 import { NOTIFICATIONS } from '@/data/notifications';
+import { DEFAULT_USER_LOCATION } from '@/data/location';
 
 interface AppState {
   // auth
@@ -56,9 +59,17 @@ interface AppState {
   coupons: Coupon[];
   addCoupon: (c: Coupon) => void;
 
+  // location
+  userLocation: UserLocation;
+  locationSource: LocationSource;
+  setUserLocation: (location: UserLocation, source: LocationSource) => void;
+  resetUserLocationToDefault: () => void;
+
   // stations
   favoriteStationIds: string[];
   toggleFavoriteStation: (id: string) => void;
+  selectedStationId: string | null;
+  setSelectedStation: (id: string | null) => void;
 
   // reservations
   reservations: Reservation[];
@@ -114,7 +125,10 @@ const initialState = {
   pointsBalance: CURRENT_POINTS,
   pointsHistory: POINTS_HISTORY,
   coupons: [] as Coupon[],
+  userLocation: DEFAULT_USER_LOCATION as UserLocation,
+  locationSource: 'hotel-default' as LocationSource,
   favoriteStationIds: [] as string[],
+  selectedStationId: null as string | null,
   reservations: RESERVATIONS,
   notifications: NOTIFICATIONS,
   settings: defaultSettings,
@@ -199,12 +213,17 @@ export const useAppStore = create<AppState>()(
       },
       addCoupon: (c) => set((state) => ({ coupons: [c, ...state.coupons] })),
 
+      setUserLocation: (location, source) => set({ userLocation: location, locationSource: source }),
+      resetUserLocationToDefault: () =>
+        set({ userLocation: DEFAULT_USER_LOCATION, locationSource: 'hotel-default' }),
+
       toggleFavoriteStation: (id) =>
         set((state) => ({
           favoriteStationIds: state.favoriteStationIds.includes(id)
             ? state.favoriteStationIds.filter((s) => s !== id)
             : [...state.favoriteStationIds, id],
         })),
+      setSelectedStation: (id) => set({ selectedStationId: id }),
 
       addReservation: (r) => set((state) => ({ reservations: [r, ...state.reservations] })),
       cancelReservation: (id) =>

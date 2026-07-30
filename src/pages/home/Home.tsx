@@ -1,27 +1,118 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sun, Wind, Clock, Coins, Leaf, TreePine, Repeat, ChevronRight, Zap } from 'lucide-react';
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { Card } from '@/components/common/Card';
-import { ImageWithFallback } from '@/components/common/ImageWithFallback';
 import { BatteryGauge } from '@/components/charging/BatteryGauge';
+import { ChargingGuaranteeCard } from '@/components/charging/ChargingGuaranteeCard';
+import { SelectedStationSummary } from '@/components/stations/SelectedStationSummary';
+import { NearbyRewardSection } from '@/components/rewards/NearbyRewardSection';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { useAppStore } from '@/store/useAppStore';
+import { useToast } from '@/hooks/useToast';
 import { AI_SCHEDULES } from '@/data/aiSchedules';
-import { IMAGES } from '@/data/imageSources';
+import { STATIONS } from '@/data/stations';
 import { CHARGING_HISTORY } from '@/data/chargingHistory';
 import { POINTS_HISTORY } from '@/data/pointsHistory';
 import { RESERVATIONS } from '@/data/reservations';
 import { formatPoints } from '@/utils/format';
+import { applyDistances } from '@/utils/calculateDistance';
+import { effectiveChargingPowerKw, resolveSelectedStation } from '@/utils/stationFilters';
+import { calculateChargingGuarantee, estimateV2gDischargeKwh } from '@/utils/chargingGuarantee';
+import { BATTERY_LABELS, formatKoreanClock } from '@/utils/formatBatteryText';
 import { PATHS } from '@/routes/paths';
+
+/** "HH:mm"에 분 단위를 더한다(24시 넘어가면 순환). */
+function shiftTime(time: string, minutes: number): string {
+  const [h, m] = time.split(':').map(Number);
+  const total = (((h * 60 + m + minutes) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
 
 export default function Home() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const vehicles = useAppStore((s) => s.vehicles);
   const representativeVehicleId = useAppStore((s) => s.representativeVehicleId);
   const chargingSession = useAppStore((s) => s.chargingSession);
+  const chargingSettings = useAppStore((s) => s.chargingSettings);
+  const updateChargingSettings = useAppStore((s) => s.updateChargingSettings);
+  const userLocation = useAppStore((s) => s.userLocation);
+  const selectedStationId = useAppStore((s) => s.selectedStationId);
+
   const vehicle = vehicles.find((v) => v.id === representativeVehicleId) ?? vehicles[0];
   const schedule = AI_SCHEDULES[0];
-  const isCharging = chargingSession && chargingSession.phase !== 'completed';
+  const isCharging = !!chargingSession && chargingSession.phase !== 'completed';
+
+  const selectedStation = useMemo(
+    () => resolveSelectedStation(applyDistances(STATIONS, userLocation), selectedStationId, userLocation),
+    [userLocation, selectedStationId]
+  );
+
+  const currentBattery = chargingSession ? chargingSession.currentSoc : vehicle.currentSoc;
+  const targetBattery = chargingSession ? chargingSession.targetSoc : chargingSettings.targetSoc;
+  const minimumBattery = chargingSession ? chargingSession.minSoc : chargingSettings.minSoc;
+
+  const phase = !chargingSession
+    ? 'idle'
+    : chargingSession.isPaused
+      ? 'paused'
+      : chargingSession.phase;
+
+  const guarantee = useMemo(() => {
+    const power = effectiveChargingPowerKw(selectedStation);
+    const now = new Date();
+    const preview = calculateChargingGuarantee({
+      currentBatteryPercent: currentBattery,
+      targetBatteryPercent: targetBattery,
+      minimumBatteryPercent: minimumBattery,
+      departureTime: chargingSettings.departureTime,
+      chargingPowerKw: power,
+      batteryCapacityKwh: vehicle.batteryCapacityKwh,
+      v2gEnabled: false,
+      phase,
+      hasSettings: !!chargingSettings.departureTime,
+      now,
+    });
+    // V2G 예상 방전량을 반영해 한 번 더 계산한다
+    return calculateChargingGuarantee({
+      currentBatteryPercent: currentBattery,
+      targetBatteryPercent: targetBattery,
+      minimumBatteryPercent: minimumBattery,
+      departureTime: chargingSettings.departureTime,
+      chargingPowerKw: power,
+      batteryCapacityKwh: vehicle.batteryCapacityKwh,
+      v2gEnabled: chargingSettings.allowV2g,
+      estimatedDischargeKwh: estimateV2gDischargeKwh({
+        maxDischargeKw: chargingSettings.maxDischargeKw,
+        minutesUntilDeparture: preview.minutesUntilDeparture,
+        requiredChargingMinutes: preview.requiredMinutes,
+      }),
+      phase,
+      hasSettings: !!chargingSettings.departureTime,
+      now,
+    });
+  }, [selectedStation, currentBattery, targetBattery, minimumBattery, chargingSettings, vehicle, phase]);
+
+  const handleLowerTarget = () => {
+    const next = Math.max(minimumBattery + 5, targetBattery - 10);
+    if (next === targetBattery) {
+      showToast('목표 충전량을 더 낮출 수 없어요', 'warning');
+      return;
+    }
+    updateChargingSettings({ targetSoc: next });
+    showToast(`목표 충전량을 ${next}%로 낮췄어요`, 'success');
+  };
+
+  const handleDelayDeparture = () => {
+    const next = shiftTime(chargingSettings.departureTime, 60);
+    updateChargingSettings({ departureTime: next });
+    showToast(`출발 시간을 ${formatKoreanClock(next)}으로 미뤘어요`, 'success');
+  };
+
+  const handleFindFastStation = () => {
+    navigate(`${PATHS.map}?filter=fast`);
+  };
 
   const recentActivities = [
     {
@@ -50,37 +141,41 @@ export default function Home() {
   return (
     <MobileLayout>
       <div className="flex flex-col gap-4 pb-2">
-        {/* Hero card */}
-        <button
-          type="button"
-          onClick={() => navigate(PATHS.aiSchedule)}
-          className="relative overflow-hidden rounded-card text-left shadow-card"
-        >
-          <ImageWithFallback
-            src={IMAGES.evChargingPlugCloseup.url}
-            alt={IMAGES.evChargingPlugCloseup.alt}
-            className="h-44 w-full object-cover"
-            wrapperClassName="h-44 w-full"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-            <p className="text-xs font-semibold text-primary">오늘 {schedule.departureTime} 출발 예정</p>
-            <p className="mt-1 text-lg font-extrabold">출발 시 예상 배터리 {schedule.expectedDepartureSoc}%</p>
-            <p className="mt-0.5 text-sm text-white/85">오늘 최대 {formatPoints(schedule.estimatedPoints)} 적립 가능</p>
-          </div>
-        </button>
+        {/* 충전 보장 히어로 */}
+        <ChargingGuaranteeCard
+          guarantee={guarantee}
+          currentBatteryPercent={currentBattery}
+          targetBatteryPercent={targetBattery}
+          minimumBatteryPercent={minimumBattery}
+          departureTime={chargingSettings.departureTime}
+          onViewPlan={() => navigate(PATHS.aiSchedule)}
+          onChangeSettings={() => navigate(PATHS.participate)}
+          onLowerTarget={handleLowerTarget}
+          onDelayDeparture={handleDelayDeparture}
+          onFindFastStation={handleFindFastStation}
+        />
 
-        {/* Battery status card */}
+        {/* 현재 기준 충전소 */}
+        <SelectedStationSummary
+          station={selectedStation}
+          onChange={() => navigate(PATHS.map)}
+          onClick={selectedStation ? () => navigate(PATHS.stationDetail(selectedStation.id)) : undefined}
+        />
+
+        {/* 배터리 상태 */}
         <Card>
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-text-secondary">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-text-secondary">
                 {vehicle.manufacturer} {vehicle.model}
               </p>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                <StatusBadge label={isCharging ? '충전 중' : vehicle.connected ? '연결됨' : '연결 안됨'} tone={isCharging ? 'warning' : vehicle.connected ? 'success' : 'neutral'} />
-                <StatusBadge label={`최소 ${20}%`} tone="neutral" />
-                <StatusBadge label={`목표 ${80}%`} tone="neutral" />
+                <StatusBadge
+                  label={isCharging ? '충전 중' : vehicle.connected ? '연결됨' : '연결 안됨'}
+                  tone={isCharging ? 'warning' : vehicle.connected ? 'success' : 'neutral'}
+                />
+                <StatusBadge label={`${BATTERY_LABELS.minimum} ${minimumBattery}%`} tone="neutral" />
+                <StatusBadge label={`${BATTERY_LABELS.target} ${targetBattery}%`} tone="neutral" />
               </div>
               <button
                 type="button"
@@ -91,11 +186,36 @@ export default function Home() {
                 <ChevronRight size={15} aria-hidden="true" />
               </button>
             </div>
-            <BatteryGauge soc={vehicle.currentSoc} minSoc={20} targetSoc={80} charging={!!isCharging} size={132} />
+            <BatteryGauge
+              soc={currentBattery}
+              minSoc={minimumBattery}
+              targetSoc={targetBattery}
+              charging={isCharging}
+              size={128}
+              label={BATTERY_LABELS.level}
+            />
           </div>
         </Card>
 
-        {/* AI recommendation card */}
+        {/* 충전소 근처 추천 혜택 */}
+        <NearbyRewardSection
+          stationId={selectedStation?.id ?? null}
+          title="충전소 근처 추천 혜택"
+          description="충전하는 동안 이용하기 좋은 장소를 골랐어요"
+          limit={3}
+          variant="scroll"
+          remainingChargingMinutes={
+            isCharging && chargingSession
+              ? Math.max(
+                  0,
+                  Math.round((new Date(chargingSession.estimatedCompletionAt).getTime() - Date.now()) / 60000)
+                )
+              : null
+          }
+          onSeeAll={() => navigate(PATHS.rewards)}
+        />
+
+        {/* AI 추천 */}
         <Card>
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-[15px] font-bold text-text">AI 충전 추천</h3>
@@ -127,7 +247,7 @@ export default function Home() {
           </button>
         </Card>
 
-        {/* Environmental impact card */}
+        {/* 환경 기여 현황 */}
         <Card>
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-[15px] font-bold text-text">환경 기여 현황</h3>
@@ -157,7 +277,7 @@ export default function Home() {
           </button>
         </Card>
 
-        {/* Recent activity */}
+        {/* 최근 활동 */}
         <Card>
           <h3 className="mb-3 text-[15px] font-bold text-text">최근 활동</h3>
           <div className="flex flex-col divide-y divide-border">

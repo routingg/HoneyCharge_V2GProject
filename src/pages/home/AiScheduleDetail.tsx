@@ -21,7 +21,7 @@ export default function AiScheduleDetail() {
 
   const chartData = schedule.hourly.map((h) => ({
     hour: `${h.hour}시`,
-    SOC: h.socForecast,
+    '배터리 잔량': h.socForecast,
     재생에너지: h.renewableRatio,
     단가: h.priceWon,
   }));
@@ -62,7 +62,7 @@ export default function AiScheduleDetail() {
           </div>
         </Card>
 
-        <ChartCard title="시간대별 SOC · 재생에너지 비율" subtitle="24시간 예측 데이터">
+        <ChartCard title="시간대별 배터리 잔량 · 재생에너지 비율" subtitle="24시간 예측 데이터">
           <div className="h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData} margin={{ left: 0, right: 8, top: 4, bottom: 0 }}>
@@ -71,7 +71,7 @@ export default function AiScheduleDetail() {
                 <YAxis tick={{ fontSize: 10, fill: '#70757A' }} axisLine={false} tickLine={false} width={36} />
                 <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12, border: '1px solid #E7E8EA' }} />
                 <Area type="monotone" dataKey="재생에너지" fill="#FFF4BF" stroke="#B88A00" strokeWidth={1.5} fillOpacity={0.7} />
-                <Line type="monotone" dataKey="SOC" stroke="#1976D2" strokeWidth={2.5} dot={false} />
+                <Line type="monotone" dataKey="배터리 잔량" stroke="#1976D2" strokeWidth={2.5} dot={false} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>

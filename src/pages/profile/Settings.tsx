@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, RotateCcw, Info, FileText, ShieldCheck } from 'lucide-react';
+import { Sparkles, RotateCcw, Info, FileText, ShieldCheck, MapPin } from 'lucide-react';
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { Card } from '@/components/common/Card';
 import { Toggle } from '@/components/common/Toggle';
 import { Modal } from '@/components/common/Modal';
 import { PrimaryButton } from '@/components/common/PrimaryButton';
 import { SecondaryButton } from '@/components/common/SecondaryButton';
+import { LocationSourceBadge } from '@/components/map/LocationSourceBadge';
+import { LocationPermissionNotice } from '@/components/map/LocationPermissionNotice';
 import { useAppStore } from '@/store/useAppStore';
 import { useToast } from '@/hooks/useToast';
+import { requestBrowserLocation } from '@/utils/location';
 import { PATHS } from '@/routes/paths';
 
 export default function Settings() {
@@ -17,7 +20,27 @@ export default function Settings() {
   const settings = useAppStore((s) => s.settings);
   const updateSettings = useAppStore((s) => s.updateSettings);
   const resetAllData = useAppStore((s) => s.resetAllData);
+  const userLocation = useAppStore((s) => s.userLocation);
+  const locationSource = useAppStore((s) => s.locationSource);
+  const setUserLocation = useAppStore((s) => s.setUserLocation);
+  const resetUserLocationToDefault = useAppStore((s) => s.resetUserLocationToDefault);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [locating, setLocating] = useState(false);
+  /** 이전 위치 요청 결과가 최신 상태를 덮어쓰지 않도록 하는 시퀀스 번호 */
+  const locationRequestId = useRef(0);
+
+  const effectiveSource =
+    settings.demoMode && locationSource === 'hotel-default' ? 'demo' : locationSource;
+
+  const handleUseBrowserLocation = async () => {
+    const requestId = ++locationRequestId.current;
+    setLocating(true);
+    const result = await requestBrowserLocation();
+    if (requestId !== locationRequestId.current) return;
+    setLocating(false);
+    setUserLocation(result.location, result.source);
+    showToast(result.message, result.ok ? 'success' : 'warning');
+  };
 
   const handleReset = () => {
     resetAllData();
@@ -51,6 +74,40 @@ export default function Settings() {
               데모 데이터 초기화
             </button>
           )}
+        </Card>
+
+        <Card>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="flex items-center gap-1.5 text-[15px] font-bold text-text">
+                <MapPin size={16} className="shrink-0 text-text-secondary" aria-hidden="true" />
+                위치 기준
+              </h3>
+              <p className="mt-0.5 truncate text-xs text-text-secondary">{userLocation.name}</p>
+              <p className="truncate text-[11px] text-text-secondary">{userLocation.address}</p>
+            </div>
+            <LocationSourceBadge source={effectiveSource} />
+          </div>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <LocationPermissionNotice
+              source={effectiveSource}
+              loading={locating}
+              onUseBrowserLocation={handleUseBrowserLocation}
+              onUseHotelLocation={() => {
+                locationRequestId.current += 1;
+                setLocating(false);
+                resetUserLocationToDefault();
+                showToast('글로스터호텔 함덕 기준으로 되돌렸어요', 'info');
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => navigate(PATHS.map)}
+              className="inline-flex min-h-[28px] items-center rounded-chip border border-border px-2.5 text-[11px] font-bold text-text"
+            >
+              지도에서 확인
+            </button>
+          </div>
         </Card>
 
         <Card className="flex flex-col divide-y divide-border">

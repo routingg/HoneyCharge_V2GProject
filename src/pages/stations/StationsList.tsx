@@ -7,6 +7,7 @@ import { StationCard } from '@/components/stations/StationCard';
 import { EmptyState } from '@/components/common/EmptyState';
 import { STATIONS, STATION_FILTERS, STATION_SORTS } from '@/data/stations';
 import { filterStations, sortStations } from '@/utils/stationFilters';
+import { applyDistances } from '@/utils/calculateDistance';
 import { useAppStore } from '@/store/useAppStore';
 import { PATHS } from '@/routes/paths';
 
@@ -14,6 +15,8 @@ export default function StationsList() {
   const navigate = useNavigate();
   const favorites = useAppStore((s) => s.favoriteStationIds);
   const toggleFavorite = useAppStore((s) => s.toggleFavoriteStation);
+  const setSelectedStation = useAppStore((s) => s.setSelectedStation);
+  const userLocation = useAppStore((s) => s.userLocation);
   const [query, setQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [sortKey, setSortKey] = useState<string>('가까운 순');
@@ -23,9 +26,11 @@ export default function StationsList() {
   };
 
   const stations = useMemo(() => {
-    const filtered = filterStations(STATIONS, activeFilters, query);
+    // 사용자 위치(브라우저 실제 위치 또는 글로스터호텔 함덕) 기준으로 거리 재계산
+    const withDistance = applyDistances(STATIONS, userLocation);
+    const filtered = filterStations(withDistance, activeFilters, query);
     return sortStations(filtered, sortKey);
-  }, [activeFilters, query, sortKey]);
+  }, [userLocation, activeFilters, query, sortKey]);
 
   return (
     <MobileLayout title="충전소 목록">
@@ -55,7 +60,9 @@ export default function StationsList() {
         </div>
 
         <div className="flex items-center justify-between">
-          <p className="text-xs text-text-secondary">{stations.length}개 충전소</p>
+          <p className="truncate text-xs text-text-secondary">
+            {stations.length}개 충전소 · {userLocation.name} 기준
+          </p>
           <select
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value)}
@@ -80,7 +87,10 @@ export default function StationsList() {
                 station={station}
                 isFavorite={favorites.includes(station.id)}
                 onToggleFavorite={toggleFavorite}
-                onClick={() => navigate(PATHS.stationDetail(station.id))}
+                onClick={() => {
+                  setSelectedStation(station.id);
+                  navigate(PATHS.stationDetail(station.id));
+                }}
               />
             ))}
           </div>

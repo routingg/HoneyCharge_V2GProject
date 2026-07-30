@@ -144,7 +144,7 @@ export default function StationReserve() {
             <span className="text-sm font-semibold text-text">예상 체류 시간</span>
             <Stepper value={stayMin} onChange={setStayMin} min={30} max={240} step={15} unit="분" label="예상 체류 시간" />
           </div>
-          <Slider label="목표 SOC" value={targetSoc} onChange={setTargetSoc} min={30} max={100} formatValue={(v) => `${v}%`} />
+          <Slider label="목표 충전량" value={targetSoc} onChange={setTargetSoc} min={30} max={100} formatValue={(v) => `${v}%`} />
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold text-text">V2G 참여</p>

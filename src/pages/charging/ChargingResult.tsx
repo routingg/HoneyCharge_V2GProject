@@ -35,12 +35,12 @@ export default function ChargingResult() {
       <Card className="mt-6">
         <div className="flex items-center justify-center gap-4">
           <div className="text-center">
-            <p className="text-xs text-text-secondary">시작 SOC</p>
+            <p className="text-xs text-text-secondary">시작 배터리</p>
             <p className="text-2xl font-extrabold text-text">{result.startSoc}%</p>
           </div>
           <span className="text-text-secondary">→</span>
           <div className="text-center">
-            <p className="text-xs text-text-secondary">종료 SOC</p>
+            <p className="text-xs text-text-secondary">종료 배터리</p>
             <p className="text-2xl font-extrabold text-success">{result.endSoc}%</p>
           </div>
         </div>
@@ -57,7 +57,7 @@ export default function ChargingResult() {
         <Card>
           <p className="flex items-center gap-1 text-xs text-text-secondary">
             <BatteryCharging size={12} aria-hidden="true" />
-            방전량
+            전력망에 나눈 양
           </p>
           <p className="mt-1 text-lg font-extrabold text-text">{result.dischargedKwh}kWh</p>
         </Card>

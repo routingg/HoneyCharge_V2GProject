@@ -28,11 +28,72 @@ export function createStationIcon(station: Station, selected: boolean): L.DivIco
   });
 }
 
-export function createUserLocationIcon(): L.DivIcon {
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * 사용자 현재 위치 마커.
+ * 충전소 마커(원형 ⚡ 핀)와 확실히 구분되도록 파란 펄스 점 + 라벨을 함께 그린다.
+ */
+export function createUserLocationIcon(label = '현재 위치'): L.DivIcon {
+  const safeLabel = escapeHtml(label);
   return L.divIcon({
     className: 'honeycharge-user-marker',
-    html: `<div style="width:16px;height:16px;border-radius:9999px;background:#1976D2;border:3px solid white;box-shadow:0 0 0 4px rgba(25,118,210,0.25);"></div>`,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
+    html: `
+      <div style="position:relative;display:flex;flex-direction:column;align-items:center;">
+        <div style="position:relative;width:22px;height:22px;display:flex;align-items:center;justify-content:center;">
+          <span style="
+            position:absolute;inset:0;border-radius:9999px;
+            background:rgba(25,118,210,0.28);
+          " class="animate-pulse-ring"></span>
+          <span style="
+            position:relative;width:16px;height:16px;border-radius:9999px;
+            background:#1976D2;border:3px solid white;
+            box-shadow:0 0 0 4px rgba(25,118,210,0.25);
+          "></span>
+        </div>
+        <span style="
+          margin-top:4px;white-space:nowrap;
+          background:#1976D2;color:#fff;
+          padding:2px 8px;border-radius:999px;
+          font-size:11px;font-weight:700;
+          box-shadow:0 2px 6px rgba(32,33,36,0.28);
+        ">${safeLabel}</span>
+      </div>
+    `,
+    iconSize: [22, 44],
+    iconAnchor: [11, 11],
+  });
+}
+
+/** 제휴 매장 마커 (충전소·현재 위치와 구분되는 골드 사각 핀) */
+export function createPartnerStoreIcon(label: string): L.DivIcon {
+  const safeLabel = escapeHtml(label);
+  return L.divIcon({
+    className: 'honeycharge-store-marker',
+    html: `
+      <div style="display:flex;flex-direction:column;align-items:center;">
+        <div style="
+          width:28px;height:28px;border-radius:10px;
+          background:#F8C51C;border:3px solid white;
+          box-shadow:0 2px 8px rgba(0,0,0,0.3);
+          display:flex;align-items:center;justify-content:center;font-size:13px;
+        ">🎁</div>
+        <span style="
+          margin-top:4px;white-space:nowrap;
+          background:#715600;color:#fff;
+          padding:2px 8px;border-radius:999px;
+          font-size:11px;font-weight:700;
+          box-shadow:0 2px 6px rgba(32,33,36,0.28);
+        ">${safeLabel}</span>
+      </div>
+    `,
+    iconSize: [28, 50],
+    iconAnchor: [14, 14],
   });
 }

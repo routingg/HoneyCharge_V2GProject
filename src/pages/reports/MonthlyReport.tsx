@@ -26,7 +26,11 @@ export default function MonthlyReport() {
   const carbonNow = sum(thisMonth, 'carbonSavedKg');
   const chargeChange = pctChange(chargedNow, chargedPrev);
 
-  const hourlyChart = HOURLY_ENERGY.map((h) => ({ hour: `${h.hour}시`, SOC: h.socForecast, 재생에너지: h.renewableRatio }));
+  const hourlyChart = HOURLY_ENERGY.map((h) => ({
+    hour: `${h.hour}시`,
+    '배터리 잔량': h.socForecast,
+    재생에너지: h.renewableRatio,
+  }));
 
   return (
     <MobileLayout title="월간 리포트" showBack showBottomNav={false}>
@@ -41,7 +45,7 @@ export default function MonthlyReport() {
             </p>
           </Card>
           <Card>
-            <p className="text-xs text-text-secondary">이번 달 방전량</p>
+            <p className="text-xs text-text-secondary">전력망에 나눈 양</p>
             <p className="mt-1 text-lg font-extrabold text-text">{dischargedNow.toFixed(0)}kWh</p>
           </Card>
           <Card>
@@ -69,7 +73,7 @@ export default function MonthlyReport() {
           </div>
         </ChartCard>
 
-        <ChartCard title="시간대별 SOC · 재생에너지 비율">
+        <ChartCard title="시간대별 배터리 잔량 · 재생에너지 비율">
           <div className="h-48 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={hourlyChart} margin={{ left: 0, right: 8, top: 4, bottom: 0 }}>
@@ -77,7 +81,7 @@ export default function MonthlyReport() {
                 <XAxis dataKey="hour" tick={{ fontSize: 10, fill: '#70757A' }} interval={2} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#70757A' }} axisLine={false} tickLine={false} width={36} />
                 <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12, border: '1px solid #E7E8EA' }} />
-                <Line type="monotone" dataKey="SOC" stroke="#1976D2" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="배터리 잔량" stroke="#1976D2" strokeWidth={2} dot={false} />
                 <Line type="monotone" dataKey="재생에너지" stroke="#B88A00" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>

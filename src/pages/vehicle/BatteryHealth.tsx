@@ -5,6 +5,7 @@ import { Card } from '@/components/common/Card';
 import { ChartCard } from '@/components/charts/ChartCard';
 import { ProgressBar } from '@/components/common/ProgressBar';
 import { useAppStore } from '@/store/useAppStore';
+import { BATTERY_LEVEL_WITH_TERM } from '@/utils/formatBatteryText';
 
 const TIPS = [
   '급속 충전보다 완속 충전을 자주 이용하면 배터리 수명에 도움이 돼요.',
@@ -41,7 +42,7 @@ export default function BatteryHealth() {
             <p className="mt-1 text-lg font-extrabold text-text">{health.fastChargeRatio}%</p>
           </Card>
           <Card>
-            <p className="text-xs text-text-secondary">평균 SOC</p>
+            <p className="text-xs text-text-secondary">평균 배터리 잔량</p>
             <p className="mt-1 text-lg font-extrabold text-text">{health.averageSoc}%</p>
           </Card>
           <Card>
@@ -50,7 +51,8 @@ export default function BatteryHealth() {
           </Card>
         </div>
 
-        <ChartCard title="최근 7일 SOC 추이">
+        {/* 전문 용어 병기는 이 화면에서 최초 1회만 노출한다 */}
+        <ChartCard title={`최근 7일 ${BATTERY_LEVEL_WITH_TERM} 추이`}>
           <div className="h-48 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={health.recentSoc} margin={{ left: 0, right: 8, top: 4, bottom: 0 }}>
@@ -58,7 +60,7 @@ export default function BatteryHealth() {
                 <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#70757A' }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#70757A' }} axisLine={false} tickLine={false} width={36} />
                 <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12, border: '1px solid #E7E8EA' }} />
-                <Line type="monotone" dataKey="soc" stroke="#1976D2" strokeWidth={2.5} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="soc" name="배터리 잔량" stroke="#1976D2" strokeWidth={2.5} dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>

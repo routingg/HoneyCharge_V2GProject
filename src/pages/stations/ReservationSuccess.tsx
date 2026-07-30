@@ -38,7 +38,7 @@ export default function ReservationSuccess() {
             <dd className="text-right font-semibold text-text">{reservation.time}</dd>
             <dt className="text-text-secondary">충전기</dt>
             <dd className="text-right font-semibold text-text">{reservation.chargerType}</dd>
-            <dt className="text-text-secondary">목표 SOC</dt>
+            <dt className="text-text-secondary">목표 충전량</dt>
             <dd className="text-right font-semibold text-text">{reservation.targetSoc}%</dd>
             <dt className="text-text-secondary">예상 포인트</dt>
             <dd className="text-right font-semibold text-dark-gold">{formatPoints(reservation.expectedPoints)}</dd>

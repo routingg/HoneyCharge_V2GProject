@@ -9,9 +9,11 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { PrimaryButton } from '@/components/common/PrimaryButton';
 import { SecondaryButton } from '@/components/common/SecondaryButton';
 import { Modal } from '@/components/common/Modal';
+import { NearbyRewardSection } from '@/components/rewards/NearbyRewardSection';
 import { useAppStore } from '@/store/useAppStore';
 import { useToast } from '@/hooks/useToast';
 import { formatPoints } from '@/utils/format';
+import { BATTERY_LABELS } from '@/utils/formatBatteryText';
 import { PATHS } from '@/routes/paths';
 import type { ChargingResult } from '@/types';
 
@@ -25,6 +27,7 @@ export default function ChargingSession() {
   const addPoints = useAppStore((s) => s.addPoints);
   const updateVehicleSoc = useAppStore((s) => s.updateVehicleSoc);
   const demoMode = useAppStore((s) => s.settings.demoMode);
+  const selectedStationId = useAppStore((s) => s.selectedStationId);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const finishedRef = useRef(false);
 
@@ -135,9 +138,26 @@ export default function ChargingSession() {
     <MobileLayout title="충전 진행 중" showBack showBottomNav={false}>
       <div className="flex flex-col gap-4 pb-4">
         <Card className="flex flex-col items-center py-6">
-          <StatusBadge label={isV2g ? 'V2G 방전 중' : session.isPaused ? '일시정지' : '충전 중'} tone={isV2g ? 'warning' : session.isPaused ? 'neutral' : 'success'} />
+          <StatusBadge
+            label={isV2g ? '전력망에 나누는 중' : session.isPaused ? '일시정지' : '충전 중'}
+            tone={isV2g ? 'warning' : session.isPaused ? 'neutral' : 'success'}
+          />
+          <p className="mt-2 px-4 text-center text-sm font-semibold text-text">
+            {isV2g
+              ? `차량 전력을 전력망에 나누는 중이에요. 배터리 ${session.minSoc}% 이상을 지켜드려요`
+              : session.isPaused
+                ? '충전이 멈춰 있어요. 재개하면 목표까지 계속 충전해요'
+                : `목표 충전량 ${session.targetSoc}%까지 충전하고 있어요`}
+          </p>
           <div className="mt-4">
-            <BatteryGauge soc={session.currentSoc} minSoc={session.minSoc} targetSoc={session.targetSoc} charging={!session.isPaused} size={188} />
+            <BatteryGauge
+              soc={session.currentSoc}
+              minSoc={session.minSoc}
+              targetSoc={session.targetSoc}
+              charging={!session.isPaused}
+              size={188}
+              label={BATTERY_LABELS.level}
+            />
           </div>
           <motion.div
             key={session.currentKw}
@@ -183,6 +203,17 @@ export default function ChargingSession() {
           <p className="text-sm text-text-secondary">충전 장소</p>
           <p className="font-semibold text-text">{session.stationName}</p>
         </Card>
+
+        <NearbyRewardSection
+          stationId={session.stationId ?? selectedStationId}
+          title="충전하는 동안 다녀올 수 있어요"
+          description={`충전 완료까지 ${remainingMin}분 · 시간에 맞는 곳부터 보여드려요`}
+          limit={3}
+          variant="list"
+          remainingChargingMinutes={remainingMin}
+          preferFitting
+          onSeeAll={() => navigate(PATHS.rewards)}
+        />
 
         <div className="flex gap-2.5 pt-1">
           {session.isPaused ? (
