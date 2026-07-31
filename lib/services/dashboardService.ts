@@ -3,6 +3,7 @@ import type {
   AbsorptionHorizon,
   DashboardStats,
   HourlyEnergyData,
+  PeakSupplyInsight,
   SurplusAbsorptionInsight,
   VehicleSchedule,
 } from "@/lib/types";
@@ -78,6 +79,97 @@ export function buildSurplusAbsorptionInsight(
   };
 }
 
+export function buildPeakSupplyInsight(
+  energy: HourlyEnergyData[],
+): PeakSupplyInsight {
+  const dailySuppliedEnergyKWh = energy.reduce(
+    (sum, item) => sum + item.v2gDischargePowerKw,
+    0,
+  );
+  const activeSupplyHours = energy.filter(
+    (item) => item.v2gDischargePowerKw > 0,
+  ).length;
+  const peak = energy.reduce<HourlyEnergyData | undefined>(
+    (currentPeak, item) =>
+      !currentPeak ||
+      item.v2gDischargePowerKw >
+        currentPeak.v2gDischargePowerKw
+        ? item
+        : currentPeak,
+    undefined,
+  );
+  const demandPeak = energy.reduce<HourlyEnergyData | undefined>(
+    (currentPeak, item) =>
+      !currentPeak ||
+      item.electricityDemandKw >
+        currentPeak.electricityDemandKw
+        ? item
+        : currentPeak,
+    undefined,
+  );
+  const periods = (
+    Object.entries(PERIOD_DAYS) as [
+      AbsorptionHorizon,
+      1 | 7 | 30,
+    ][]
+  ).reduce<PeakSupplyInsight["periods"]>(
+    (result, [horizon, days]) => {
+      const suppliedEnergyKWh = Math.round(
+        dailySuppliedEnergyKWh * days,
+      );
+      result[horizon] = {
+        horizon,
+        days,
+        suppliedEnergyKWh,
+        householdDayEquivalents: Math.round(
+          suppliedEnergyKWh /
+            HOUSEHOLD_DAILY_USE_KWH,
+        ),
+        basis:
+          horizon === "day"
+            ? "daily-forecast"
+            : "scaled-projection",
+      };
+      return result;
+    },
+    {} as PeakSupplyInsight["periods"],
+  );
+  const peakDemandKw =
+    demandPeak?.electricityDemandKw ?? 0;
+  const supplyAtPeakDemandKw =
+    demandPeak?.v2gDischargePowerKw ?? 0;
+
+  return {
+    periods,
+    peakSupplyPowerKw: peak?.v2gDischargePowerKw ?? 0,
+    peakSupplyHour:
+      peak?.timestamp.slice(11, 16) ?? "--:--",
+    activeSupplyHours,
+    averageActiveSupplyPowerKw:
+      activeSupplyHours > 0
+        ? Math.round(
+            dailySuppliedEnergyKWh /
+              activeSupplyHours,
+          )
+        : 0,
+    peakDemandHour:
+      demandPeak?.timestamp.slice(11, 16) ?? "--:--",
+    supplyAtPeakDemandKw,
+    peakDemandCoveragePercent:
+      peakDemandKw > 0
+        ? Number(
+            (
+              (supplyAtPeakDemandKw / peakDemandKw) *
+              100
+            ).toFixed(1),
+          )
+        : 0,
+    assumptions: {
+      householdDailyUseKWh: 10,
+    },
+  };
+}
+
 export function buildDashboardStats(
   energy: HourlyEnergyData[],
   schedules: VehicleSchedule[],
@@ -98,35 +190,48 @@ export function buildDashboardStats(
     (sum, item) => sum + item.v2gDischargePowerKw,
     0,
   );
-  const currentItems = schedules.map(
+  const participatingSchedules = schedules.filter(
+    ({ vehicle }) =>
+      vehicle.isConnected && vehicle.isV2GEnabled,
+  );
+  const currentItems = participatingSchedules.map(
     (schedule) => schedule.items[DEMO_CURRENT_HOUR],
   );
+  const currentEnergy = energy[DEMO_CURRENT_HOUR];
+  const chargingVehicles =
+    (currentEnergy?.v2gChargePowerKw ?? 0) > 0
+      ? currentItems.filter(
+          (item) => item?.action === "charge",
+        ).length
+      : 0;
+  const dischargingVehicles =
+    (currentEnergy?.v2gDischargePowerKw ?? 0) > 0
+      ? currentItems.filter(
+          (item) => item?.action === "discharge",
+        ).length
+      : 0;
   const peak = energy.reduce((max, item) =>
     item.electricityDemandKw > max.electricityDemandKw ? item : max,
   );
   const surplusAbsorption =
     buildSurplusAbsorptionInsight(energy);
+  const peakSupply = buildPeakSupplyInsight(energy);
 
   return {
     renewableEnergyMWh: Number((renewableKWh / 1000).toFixed(1)),
     demandEnergyMWh: Number((demandKWh / 1000).toFixed(1)),
-    participatingVehicles: schedules.filter(
-      ({ vehicle }) =>
-        vehicle.isConnected && vehicle.isV2GEnabled,
-    ).length,
-    chargingVehicles: currentItems.filter(
-      (item) => item.action === "charge",
-    ).length,
-    dischargingVehicles: currentItems.filter(
-      (item) => item.action === "discharge",
-    ).length,
-    standbyVehicles: currentItems.filter(
-      (item) => item.action === "standby",
-    ).length,
+    participatingVehicles: participatingSchedules.length,
+    chargingVehicles,
+    dischargingVehicles,
+    standbyVehicles:
+      participatingSchedules.length -
+      chargingVehicles -
+      dischargingVehicles,
     absorbedEnergyKWh: Math.round(absorbedEnergyKWh),
     suppliedEnergyKWh: Math.round(suppliedEnergyKWh),
     curtailmentReductionKWh: Math.round(absorbedEnergyKWh * 0.86),
     peakHour: peak.timestamp.slice(11, 16),
     surplusAbsorption,
+    peakSupply,
   };
 }

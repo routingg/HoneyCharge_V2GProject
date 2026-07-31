@@ -1,7 +1,13 @@
 export type Region = "jeju" | "honam";
 export type OwnerType = "rental" | "private";
 export type ScheduleAction = "charge" | "discharge" | "standby";
-export type VehicleStatus = "charging" | "discharging" | "standby" | "offline";
+export type VehicleStatus =
+  | "charging"
+  | "discharging"
+  | "standby"
+  | "offline"
+  | "not-enrolled"
+  | "full";
 
 export interface WeatherHour {
   timestamp: string;
@@ -20,6 +26,7 @@ export interface HourlyEnergyData extends WeatherHour {
   solarGenerationKw: number;
   windGenerationKw: number;
   renewableGenerationKw: number;
+  fixedBaseSupplyKw: number;
   electricityDemandKw: number;
   surplusPowerKw: number;
   v2gChargePowerKw: number;
@@ -60,6 +67,37 @@ export interface VehicleSchedule {
   dischargeEnergyKWh: number;
   departureSoc: number;
   rewardPoints: number;
+  rewardSettlement: VehicleRewardSettlement;
+}
+
+export interface VehicleRewardSettlement {
+  eligibleChargeKWh: number;
+  eligibleDischargeKWh: number;
+  avoidedCurtailmentKWh: number;
+  avoidedSupplyKWh: number;
+  grossGridBenefitWon: number;
+  sharedRewardPoolWon: number;
+  rewardWon: number;
+  shareRate: number;
+}
+
+export interface RewardSettlementSummary {
+  baselineCurtailmentKWh: number;
+  actualCurtailmentKWh: number;
+  avoidedCurtailmentKWh: number;
+  baselineAdditionalSupplyKWh: number;
+  actualAdditionalSupplyKWh: number;
+  avoidedAdditionalSupplyKWh: number;
+  grossGridBenefitWon: number;
+  sharedRewardPoolWon: number;
+  assumptions: {
+    intervalHours: number;
+    hvdcExportLimitKw: number;
+    curtailmentValueWonPerKWh: number;
+    avoidedSupplyCostWonPerKWh: number;
+    benefitShareRate: number;
+    pointWonValue: number;
+  };
 }
 
 export interface DashboardStats {
@@ -74,6 +112,7 @@ export interface DashboardStats {
   curtailmentReductionKWh: number;
   peakHour: string;
   surplusAbsorption: SurplusAbsorptionInsight;
+  peakSupply: PeakSupplyInsight;
 }
 
 export type AbsorptionHorizon = "day" | "week" | "month";
@@ -101,9 +140,35 @@ export interface SurplusAbsorptionInsight {
   };
 }
 
+export interface PeakSupplyPeriodMetric {
+  horizon: AbsorptionHorizon;
+  days: 1 | 7 | 30;
+  suppliedEnergyKWh: number;
+  householdDayEquivalents: number;
+  basis: "daily-forecast" | "scaled-projection";
+}
+
+export interface PeakSupplyInsight {
+  periods: Record<
+    AbsorptionHorizon,
+    PeakSupplyPeriodMetric
+  >;
+  peakSupplyPowerKw: number;
+  peakSupplyHour: string;
+  activeSupplyHours: number;
+  averageActiveSupplyPowerKw: number;
+  peakDemandHour: string;
+  supplyAtPeakDemandKw: number;
+  peakDemandCoveragePercent: number;
+  assumptions: {
+    householdDailyUseKWh: 10;
+  };
+}
+
 export interface SimulationResult {
   region: Region;
   energy: HourlyEnergyData[];
   schedules: VehicleSchedule[];
   stats: DashboardStats;
+  rewardSettlement: RewardSettlementSummary;
 }

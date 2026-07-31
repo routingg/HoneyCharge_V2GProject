@@ -26,7 +26,7 @@ function actionReason(
     return "피크 수요를 지원하되 최소 보장 잔량 유지";
   }
   if (!vehicle.isV2GEnabled) {
-    return "V2G 미동의 차량으로 일반 충전만 허용";
+    return "V2G 미동의 차량으로 제어·포인트 대상에서 제외";
   }
   return "전력 수급 차이가 기준값 이내이거나 배터리 보호 구간";
 }
@@ -81,7 +81,9 @@ export function scheduleVehicle(
 
       if (
         urgent ||
-        (hourData.surplusPowerKw > SURPLUS_THRESHOLD_KW && soc < 94)
+        (vehicle.isV2GEnabled &&
+          hourData.surplusPowerKw > SURPLUS_THRESHOLD_KW &&
+          soc < 94)
       ) {
         action = "charge";
         powerKw = Math.min(
@@ -130,8 +132,16 @@ export function scheduleVehicle(
     chargeEnergyKWh: Number(chargeEnergyKWh.toFixed(1)),
     dischargeEnergyKWh: Number(dischargeEnergyKWh.toFixed(1)),
     departureSoc: Number(soc.toFixed(1)),
-    rewardPoints: Math.round(
-      dischargeEnergyKWh * 42 + chargeEnergyKWh * 8,
-    ),
+    rewardPoints: 0,
+    rewardSettlement: {
+      eligibleChargeKWh: 0,
+      eligibleDischargeKWh: 0,
+      avoidedCurtailmentKWh: 0,
+      avoidedSupplyKWh: 0,
+      grossGridBenefitWon: 0,
+      sharedRewardPoolWon: 0,
+      rewardWon: 0,
+      shareRate: 0,
+    },
   };
 }

@@ -1,5 +1,5 @@
-import { GridFlowApp } from "@/components/GridFlowApp";
+import { HoneyChargeApp } from "@/components/HoneyChargeApp";
 
 export default function Home() {
-  return <GridFlowApp />;
+  return <HoneyChargeApp />;
 }

@@ -1,9 +1,12 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import { getKmaShortTermForecast } from "../lib/services/kmaForecastServer";
+import type { Region } from "../lib/types";
 
 interface Env {
   ASSETS: Fetcher;
+  KMA_SERVICE_KEY?: string;
   DB: D1Database;
   IMAGES: {
     input(stream: ReadableStream): {
@@ -28,6 +31,56 @@ interface ExecutionContext {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    if (url.pathname === "/api/kma-forecast") {
+      if (request.method !== "GET") {
+        return Response.json(
+          { error: "Method not allowed." },
+          {
+            status: 405,
+            headers: { allow: "GET" },
+          },
+        );
+      }
+      const region = url.searchParams.get("region");
+      if (region !== "jeju" && region !== "honam") {
+        return Response.json(
+          { error: "region must be jeju or honam." },
+          { status: 400 },
+        );
+      }
+      if (!env.KMA_SERVICE_KEY) {
+        return new Response(null, {
+          status: 204,
+          headers: { "cache-control": "no-store" },
+        });
+      }
+      try {
+        const forecast = await getKmaShortTermForecast(
+          region as Region,
+          env.KMA_SERVICE_KEY,
+          request.signal,
+        );
+        return Response.json(forecast, {
+          headers: {
+            "cache-control":
+              "public, max-age=300, stale-while-revalidate=300",
+          },
+        });
+      } catch (error) {
+        console.warn(
+          "[GridFlow KMA server adapter]",
+          error instanceof Error ? error.message : error,
+        );
+        return Response.json(
+          { error: "KMA forecast is temporarily unavailable." },
+          {
+            status: 502,
+            headers: { "cache-control": "no-store" },
+          },
+        );
+      }
+    }
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];

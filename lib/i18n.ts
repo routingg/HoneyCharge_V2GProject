@@ -52,6 +52,8 @@ const statusNames: Record<
   discharging: { ko: "방전 중", en: "Discharging" },
   standby: { ko: "대기", en: "Standby" },
   offline: { ko: "미연결", en: "Offline" },
+  "not-enrolled": { ko: "미참여", en: "Not Enrolled" },
+  full: { ko: "완충", en: "Fully Charged" },
 };
 
 const weatherConditions: Record<string, string> = {
@@ -110,8 +112,8 @@ const scheduleReasons: Record<string, string> = {
     "Store surplus renewable energy in the vehicle battery.",
   "피크 수요를 지원하되 최소 보장 잔량 유지":
     "Support peak demand while maintaining the minimum SOC.",
-  "V2G 미동의 차량으로 일반 충전만 허용":
-    "Standard charging only because V2G participation is disabled.",
+  "V2G 미동의 차량으로 제어·포인트 대상에서 제외":
+    "Not opted in; excluded from V2G control and rewards.",
   "전력 수급 차이가 기준값 이내이거나 배터리 보호 구간":
     "Supply-demand gap is within the threshold or battery protection is active.",
 };

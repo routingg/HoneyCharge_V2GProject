@@ -1,6 +1,8 @@
 import { buildDashboardStats } from "@/lib/services/dashboardService";
 import { forecastElectricityDemand } from "@/lib/services/demandForecastService";
+import { getFixedBaseSupplyKw } from "@/lib/services/gridBalanceService";
 import { forecastRenewableGeneration } from "@/lib/services/renewableForecastService";
+import { settleSharedSavingsRewards } from "@/lib/services/rewardSettlementService";
 import { scheduleVehicle } from "@/lib/services/v2gScheduler";
 import { getVehicles } from "@/lib/services/vehicleService";
 import { getHourlyWeather } from "@/lib/services/weatherService";
@@ -33,12 +35,16 @@ export function buildEnergyTimeline(
       region,
       hour,
     );
+    const fixedBaseSupplyKw = getFixedBaseSupplyKw(region);
     return {
       ...normalizedWeather,
       ...renewable,
+      fixedBaseSupplyKw,
       electricityDemandKw,
       surplusPowerKw:
-        renewable.renewableGenerationKw - electricityDemandKw,
+        fixedBaseSupplyKw +
+        renewable.renewableGenerationKw -
+        electricityDemandKw,
       v2gChargePowerKw: 0,
       v2gDischargePowerKw: 0,
     };
@@ -50,18 +56,44 @@ export function runSimulation(
   currentWeather?: WeatherHour,
 ): SimulationResult {
   const baseEnergy = buildEnergyTimeline(region, currentWeather);
-  const schedules = getVehicles().map((vehicle) =>
+  const rawSchedules = getVehicles().map((vehicle) =>
     scheduleVehicle(vehicle, baseEnergy),
+  );
+  const baselineSchedules = getVehicles().map((vehicle) =>
+    scheduleVehicle(
+      { ...vehicle, isV2GEnabled: false },
+      baseEnergy,
+    ),
   );
 
   const energy = baseEnergy.map((hour, hourIndex) => {
-    const charge = schedules.reduce((sum, schedule) => {
-      const item = schedule.items[hourIndex];
-      return sum + (item.action === "charge" ? item.powerKw : 0);
+    const charge = rawSchedules.reduce((sum, schedule) => {
+      const actual = schedule.items[hourIndex];
+      const baseline = baselineSchedules.find(
+        (candidate) =>
+          candidate.vehicle.id === schedule.vehicle.id,
+      )?.items[hourIndex];
+      return sum +
+        (schedule.vehicle.isV2GEnabled &&
+        actual.action === "charge"
+          ? Math.max(
+              0,
+              actual.powerKw -
+                (baseline?.action === "charge"
+                  ? baseline.powerKw
+                  : 0),
+            )
+          : 0);
     }, 0);
-    const discharge = schedules.reduce((sum, schedule) => {
+    const discharge = rawSchedules.reduce((sum, schedule) => {
       const item = schedule.items[hourIndex];
-      return sum + (item.action === "discharge" ? item.powerKw : 0);
+      return (
+        sum +
+        (schedule.vehicle.isV2GEnabled &&
+        item.action === "discharge"
+          ? item.powerKw
+          : 0)
+      );
     }, 0);
 
     return {
@@ -74,11 +106,18 @@ export function runSimulation(
       ),
     };
   });
+  const rewardSettlement = settleSharedSavingsRewards(
+    baseEnergy,
+    rawSchedules,
+    baselineSchedules,
+  );
+  const schedules = rewardSettlement.schedules;
 
   return {
     region,
     energy,
     schedules,
     stats: buildDashboardStats(energy, schedules),
+    rewardSettlement: rewardSettlement.summary,
   };
 }
