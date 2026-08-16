@@ -14,7 +14,7 @@ const FILTERS: { id: FilterId; label: string }[] = [
 ];
 
 /** E-pit의 지도 우선 레이아웃(필터 칩 + 지도 + 바텀시트)을 재현합니다. */
-export function EpitStationMap() {
+export function EpitStationMap({ onReserve }: { onReserve: () => void }) {
   const [activeFilters, setActiveFilters] = useState<Set<FilterId>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -89,7 +89,7 @@ export function EpitStationMap() {
             <button type="button" className="epit-btn-outline">
               <Navigation size={14} /> 내비 전송
             </button>
-            <button type="button" className="epit-btn-filled">
+            <button type="button" className="epit-btn-filled" onClick={onReserve}>
               예약하기
             </button>
           </div>

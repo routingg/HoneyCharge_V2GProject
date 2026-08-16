@@ -231,15 +231,54 @@ export function getSessionEnergy(
       .toFixed(1),
   );
 
-  const dayTotalKWh =
-    schedule.chargeEnergyKWh + schedule.dischargeEnergyKWh;
-  const pointsPerKWh =
-    dayTotalKWh > 0 ? schedule.rewardPoints / dayTotalKWh : 0;
-
   return {
     energyKWh,
-    estimatedPoints: Math.round(energyKWh * pointsPerKWh),
+    estimatedPoints: Math.round(energyKWh * getPointsPerKWh(schedule)),
   };
+}
+
+/** 하루 rewardPoints를 하루 충·방전 총량으로 나눈 평균 kWh당 포인트입니다. */
+function getPointsPerKWh(schedule: VehicleSchedule): number {
+  const dayTotalKWh = schedule.chargeEnergyKWh + schedule.dischargeEnergyKWh;
+  return dayTotalKWh > 0 ? schedule.rewardPoints / dayTotalKWh : 0;
+}
+
+/** 스케줄 블록 하나가 하루 보상 중 차지하는 몫의 근사치입니다. */
+export function estimateBlockPoints(
+  schedule: VehicleSchedule,
+  block: ScheduleBlock,
+): number {
+  return Math.round(block.energyKWh * getPointsPerKWh(schedule));
+}
+
+export interface WeeklyMetricPoint {
+  label: string;
+  participationKWh: number;
+  rewardPoints: number;
+}
+
+const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
+/** 시연용 요일별 변동 배율입니다 — 무작위가 아니라 고정값이라 항상 같은 모양을 그립니다. */
+const WEEKDAY_MULTIPLIERS = [0.55, 0.8, 0.45, 1, 0.9, 0.35, 0.65];
+
+/**
+ * 실제로는 하루치 시뮬레이션만 있어서, 오늘의 충·방전량과 보상에 고정
+ * 요일별 배율을 곱해 만든 시연용 주간 참여 데이터입니다. 실제 누적
+ * 실적이 아니라 "이런 패턴으로 보일 것"을 보여주기 위한 근사치입니다.
+ */
+export function getWeeklyParticipation(
+  schedule: VehicleSchedule,
+): WeeklyMetricPoint[] {
+  const todayKWh = schedule.chargeEnergyKWh + schedule.dischargeEnergyKWh;
+  return WEEKDAY_LABELS.map((label, index) => ({
+    label,
+    participationKWh: Number(
+      (todayKWh * WEEKDAY_MULTIPLIERS[index]).toFixed(1),
+    ),
+    rewardPoints: Math.round(
+      schedule.rewardPoints * WEEKDAY_MULTIPLIERS[index],
+    ),
+  }));
 }
 
 export type GridSignal = "surplus" | "balanced" | "peak";

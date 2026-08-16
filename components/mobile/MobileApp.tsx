@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CarFront, Gift } from "lucide-react";
+import { CarFront } from "lucide-react";
 import { BottomNav } from "@/components/mobile/BottomNav";
 import { EpitFocusScreen } from "@/components/mobile/EpitFocusScreen";
 import { EpitHome } from "@/components/mobile/EpitHome";
+import { EpitPncFlow } from "@/components/mobile/EpitPncFlow";
+import { EpitRewards } from "@/components/mobile/EpitRewards";
 import { EpitSocSettings } from "@/components/mobile/EpitSocSettings";
 import { EpitStationMap } from "@/components/mobile/EpitStationMap";
 import { EpitV2GSchedule } from "@/components/mobile/EpitV2GSchedule";
@@ -13,6 +15,7 @@ import { MyHyundaiSocSettings } from "@/components/mobile/MyHyundaiSocSettings";
 import { MyHyundaiStationMap } from "@/components/mobile/MyHyundaiStationMap";
 import { MyHyundaiV2GSchedule } from "@/components/mobile/MyHyundaiV2GSchedule";
 import { MyHyundaiVehicle } from "@/components/mobile/MyHyundaiVehicle";
+import { MyHyundaiWallet } from "@/components/mobile/MyHyundaiWallet";
 import { PlaceholderScreen } from "@/components/mobile/PlaceholderScreen";
 import { SkinProvider, useSkin } from "@/components/mobile/SkinProvider";
 import { SkinSettings } from "@/components/mobile/SkinSettings";
@@ -40,7 +43,8 @@ export type MobileView =
   | "rewards"
   | "myVehicle"
   | "settings"
-  | "focus";
+  | "focus"
+  | "pnc";
 
 const DEMO_HOUR_PRESETS: { hour: number; label: string }[] = [
   { hour: 11, label: "11:00 여유" },
@@ -62,11 +66,13 @@ function MobileShell() {
   const [rawView, setView] = useState<MobileView>("home");
   const [hour, setHour] = useState(DEMO_CURRENT_HOUR);
 
-  // "focus" only exists as an E-pit screen — if the presenter switches
-  // skin mid-flow, render Home instead of nothing (derived, not stored,
-  // so it never needs an effect to "catch up").
+  // "focus" and "pnc" only exist as E-pit screens — if the presenter
+  // switches skin mid-flow, render Home instead of nothing (derived,
+  // not stored, so it never needs an effect to "catch up").
   const view: MobileView =
-    rawView === "focus" && skin !== "epit" ? "home" : rawView;
+    (rawView === "focus" || rawView === "pnc") && skin !== "epit"
+      ? "home"
+      : rawView;
 
   const simulation = useMemo(() => runSimulation("jeju"), []);
   const schedule = useMemo(
@@ -140,6 +146,13 @@ function MobileShell() {
           <EpitFocusScreen vm={vm} onBack={() => setView("home")} />
         )}
 
+        {view === "pnc" && skin === "epit" && (
+          <EpitPncFlow
+            vehicleModel={vm.vehicle.model}
+            onDone={() => setView("home")}
+          />
+        )}
+
         {view === "settings" && <SkinSettings />}
 
         {view === "v2g" &&
@@ -165,14 +178,17 @@ function MobileShell() {
             <MyHyundaiSocSettings vm={vm} />
           ))}
         {view === "stations" &&
-          (skin === "epit" ? <EpitStationMap /> : <MyHyundaiStationMap />)}
-        {view === "rewards" && (
-          <PlaceholderScreen
-            icon={Gift}
-            title="리워드"
-            description="적립된 HoneyPoint 내역과 사용처를 준비 중이에요."
-          />
-        )}
+          (skin === "epit" ? (
+            <EpitStationMap onReserve={() => setView("pnc")} />
+          ) : (
+            <MyHyundaiStationMap />
+          ))}
+        {view === "rewards" &&
+          (skin === "epit" ? (
+            <EpitRewards schedule={schedule} blocks={scheduleBlocks} />
+          ) : (
+            <MyHyundaiWallet schedule={schedule} />
+          ))}
         {view === "myVehicle" &&
           (skin === "myhyundai" ? (
             <MyHyundaiVehicle vm={vm} />
@@ -186,7 +202,7 @@ function MobileShell() {
 
         <BottomNav
           view={
-            view === "settings" || view === "focus"
+            view === "settings" || view === "focus" || view === "pnc"
               ? "home"
               : view === "soc"
                 ? "myVehicle"
