@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // honeycharge_app(별도 브랜치)의 정적 빌드 산출물 — 압축된 번들이라
+    // 소스로 린트할 대상이 아닙니다.
+    "public/app/**",
   ]),
 ]);
 

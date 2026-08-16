@@ -93,6 +93,26 @@ const worker = {
       }, allowedWidths);
     }
 
+    if (url.pathname === "/app" || url.pathname.startsWith("/app/")) {
+      // honeycharge_app(별도 Vite SPA, 완전히 무관한 git 히스토리)를
+      // public/app/에 정적으로 빌드해 두고 여기서 직접 서빙합니다.
+      // Next.js rewrites()는 정적 public 파일로의 리라이트를 지원하지
+      // 않아서(vinext 한계), Worker fetch 레벨에서 처리합니다.
+      //
+      // 실제 자산 요청(마지막 경로 조각에 확장자가 있음, 예: .js/.css/
+      // .jpg)은 그대로 통과시켜 vinext의 기존 정적 서빙 경로가 처리하게
+      // 둡니다. 확장자가 없는 경로는 react-router 클라이언트 라우트로
+      // 보고 index.html로 폴백합니다 — handler.fetch를 직접 다시
+      // 호출하면(중첩 호출) 응답 바디가 비어서 오는 vinext 버그가 있어,
+      // 진짜 서브리퀘스트(전역 fetch)로 다시 요청해 우회합니다.
+      const lastSegment = url.pathname.split("/").pop() ?? "";
+      const isAssetRequest = lastSegment.includes(".");
+      if (isAssetRequest) {
+        return handler.fetch(request, env, ctx);
+      }
+      return fetch(new URL("/app/index.html", request.url), request);
+    }
+
     return handler.fetch(request, env, ctx);
   },
 };
