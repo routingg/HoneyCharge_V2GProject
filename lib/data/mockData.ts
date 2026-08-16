@@ -50,8 +50,28 @@ function makeVehicle(index: number, ownerType: "rental" | "private"): Vehicle {
   };
 }
 
+/** 모바일 홈 화면의 대표 데모 사용자 차량 ID입니다. */
+export const DEMO_USER_VEHICLE_ID = "OWN-002";
+
+const demoUserOverrides: Partial<Vehicle> = {
+  model: "Kia EV9",
+  batteryCapacityKWh: 99.8,
+  currentSoc: 54,
+  minimumSoc: 50,
+  targetSoc: 52,
+  departureTime: atHour(23),
+  isConnected: true,
+  isV2GEnabled: true,
+  maxChargePowerKw: 6.4,
+  maxDischargePowerKw: 9,
+};
+
 /** 실제 고객 데이터가 아닌 시연용 합성 차량 32대입니다. */
 export const mockVehicles: Vehicle[] = [
   ...Array.from({ length: 22 }, (_, index) => makeVehicle(index, "rental")),
   ...Array.from({ length: 10 }, (_, index) => makeVehicle(index, "private")),
-];
+].map((vehicle) =>
+  vehicle.id === DEMO_USER_VEHICLE_ID
+    ? { ...vehicle, ...demoUserOverrides }
+    : vehicle,
+);
