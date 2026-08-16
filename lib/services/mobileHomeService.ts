@@ -114,6 +114,66 @@ export function getChargeCompleteEta(
   return target.timestamp.slice(11, 16);
 }
 
+/**
+ * 홈 화면 스킨(E-pit / myHyundai)이 공통으로 소비하는 뷰모델입니다.
+ * 두 스킨 모두 이 객체만 읽고, 계산은 절대 다시 하지 않습니다.
+ */
+export interface HomeViewModel {
+  vehicle: Vehicle;
+  soc: number;
+  rangeKm: number;
+  energyState: VehicleEnergyState;
+  powerKw: number;
+  chargeEta: string | null;
+  minimumSoc: number;
+  recommendedMinimumSoc: number;
+  v2gWindow: V2GWindow | null;
+  rewardPoints: number;
+  signalCopy: EnergySignalCopy;
+  sessionEnergy: SessionEnergy | null;
+}
+
+export interface SessionEnergy {
+  energyKWh: number;
+  estimatedPoints: number;
+}
+
+/**
+ * 지금 충전·방전 중이 아니면 null입니다. 충전/방전 중이면, 같은 동작이
+ * 끊기지 않고 이어진 구간(오늘 이 세션)의 누적 에너지량을 더합니다.
+ * 예상 포인트는 하루 전체 rewardPoints를 하루 충·방전 총량으로 나눈
+ * 평균 kWh당 포인트를 적용한 근사치입니다 — settleSharedSavingsRewards는
+ * 시간대별로 다른 단가를 쓰므로 세션 화면용 추정값이지 정산값이 아닙니다.
+ */
+export function getSessionEnergy(
+  schedule: VehicleSchedule,
+  hour: number,
+): SessionEnergy | null {
+  const action = schedule.items[hour]?.action;
+  if (action !== "charge" && action !== "discharge") return null;
+
+  let start = hour;
+  while (start > 0 && schedule.items[start - 1]?.action === action) {
+    start -= 1;
+  }
+  const energyKWh = Number(
+    schedule.items
+      .slice(start, hour + 1)
+      .reduce((sum, item) => sum + item.powerKw, 0)
+      .toFixed(1),
+  );
+
+  const dayTotalKWh =
+    schedule.chargeEnergyKWh + schedule.dischargeEnergyKWh;
+  const pointsPerKWh =
+    dayTotalKWh > 0 ? schedule.rewardPoints / dayTotalKWh : 0;
+
+  return {
+    energyKWh,
+    estimatedPoints: Math.round(energyKWh * pointsPerKWh),
+  };
+}
+
 export type GridSignal = "surplus" | "balanced" | "peak";
 
 export interface EnergySignalCopy {

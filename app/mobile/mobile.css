@@ -1,24 +1,15 @@
 .hc-mobile {
-  --mob-bg: #0a0a0a;
-  --mob-panel: #141414;
-  --mob-panel-raised: #1c1c1c;
-  --mob-line: #2a2a2a;
-  --mob-text: #f5f5f0;
-  --mob-muted: #9a9a94;
-  --mob-yellow: #f2c230;
-  --mob-yellow-soft: rgba(242, 194, 48, .14);
-  --mob-green: #4ade80;
-  --mob-amber: #f59e0b;
+  --honey-yellow: #f2c230;
 
   min-height: 100vh;
-  background: var(--mob-bg);
-  color: var(--mob-text);
-  font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+  background: #000;
+  font-family: Pretendard, "Noto Sans KR", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
   display: flex;
   justify-content: center;
 }
 
-.hc-mobile button {
+:where(.hc-mobile) button {
   border: none;
   background: none;
   color: inherit;
@@ -29,117 +20,91 @@
 
 .mobile-shell {
   width: 100%;
-  max-width: 460px;
+  max-width: 430px;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 12px 16px 96px;
   position: relative;
+  background: var(--skin-bg, #fff);
 }
 
-/* Demo clock control — deliberately small/muted, sits above the hero
-   without competing with the primary vehicle-first content. */
+/* ------------------------------------------------------------------ */
+/* Presenter tools — demo clock + skin switcher. Deliberately neutral  */
+/* "developer toolbar" chrome that never tries to look like either      */
+/* reference app, so it never gets mistaken for real product UI.        */
+/* ------------------------------------------------------------------ */
+.presenter-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  background: #f2f2f2;
+  border-bottom: 1px solid #ddd;
+}
 .demo-clock-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: var(--mob-panel);
-  border: 1px solid var(--mob-line);
-  font-size: 11px;
-  color: var(--mob-muted);
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  font-size: 10.5px;
+  color: #666;
 }
 .demo-clock-bar > div {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   overflow-x: auto;
 }
 .demo-clock-bar button {
-  padding: 5px 10px;
+  padding: 4px 8px;
   border-radius: 999px;
   white-space: nowrap;
-  background: var(--mob-panel-raised);
-  color: var(--mob-muted);
+  background: #fff;
+  border: 1px solid #ddd;
+  color: #666;
+  font-size: 10.5px;
 }
 .demo-clock-bar button.active {
-  background: var(--mob-yellow);
-  color: #1a1400;
+  background: #17191b;
+  color: #fff;
+  border-color: #17191b;
+  font-weight: 600;
+}
+.skin-switcher {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #ddd;
+}
+.skin-switcher button {
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  color: #666;
+  white-space: nowrap;
+}
+.skin-switcher button.active {
+  background: #17191b;
+  color: #fff;
   font-weight: 600;
 }
 
-/* Hero */
-.hero {
-  position: relative;
-  border-radius: 28px;
-  padding: 18px 20px 22px;
-  background:
-    radial-gradient(circle at 80% -10%, rgba(242, 194, 48, .12), transparent 55%),
-    linear-gradient(180deg, #161616 0%, #0c0c0c 100%);
-  border: 1px solid var(--mob-line);
-  overflow: hidden;
-}
-
-.hero-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.hero-brand {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: .01em;
-}
-.hero-bell {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--mob-panel-raised);
-}
-
-.hero-soc {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-top: 14px;
-}
-.hero-soc strong {
-  font-size: 56px;
-  line-height: 1;
-  font-weight: 700;
-  letter-spacing: -.02em;
-}
-.hero-range {
-  font-size: 15px;
-  color: var(--mob-muted);
-}
-
-.hero-vehicle {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  margin: 6px 0 4px;
-}
-.hero-vehicle-name {
-  font-size: 12px;
-  color: var(--mob-muted);
-  letter-spacing: .02em;
-}
-
+/* ------------------------------------------------------------------ */
+/* Vehicle silhouette — shared structural rules. Skin-specific blocks   */
+/* below only override colors (fills, stroke), never geometry.          */
+/* ------------------------------------------------------------------ */
 .vehicle-glyph {
   width: 100%;
-  max-width: 300px;
-  color: #d8d8d2;
+  color: #9298a1;
 }
-.vehicle-glyph .glyph-shadow { fill: rgba(0,0,0,.5); }
-.vehicle-glyph .glyph-body { fill: #1f1f1f; }
-.vehicle-glyph .glyph-glass { fill: #3a3a38; }
-.vehicle-glyph .glyph-wheel { fill: #0c0c0c; stroke: #3a3a38; stroke-width: 2; }
-.vehicle-glyph .glyph-hub { fill: #4a4a46; }
+.vehicle-glyph .glyph-shadow { fill: rgba(0, 0, 0, .16); }
+.vehicle-glyph .glyph-body { fill: #eef0f2; }
+.vehicle-glyph .glyph-glass { fill: #c7cbd1; }
+.vehicle-glyph .glyph-wheel { fill: #1c1f24; stroke: #3a3e45; stroke-width: 2; }
+.vehicle-glyph .glyph-hub { fill: #6b7078; }
 
 .vehicle-glyph .glyph-charge-flow,
 .vehicle-glyph .glyph-discharge-flow,
@@ -149,7 +114,7 @@
 }
 .vehicle-glyph .glyph-charge-flow path,
 .vehicle-glyph .glyph-discharge-flow path {
-  stroke: var(--mob-yellow);
+  stroke: var(--honey-yellow);
   stroke-width: 4;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -163,15 +128,12 @@
   opacity: 1;
   animation: glyph-pulse 1.8s ease-in-out infinite;
 }
-.vehicle-glyph.is-discharging .glyph-discharge-flow path {
-  stroke: var(--mob-amber);
-}
 .vehicle-glyph .glyph-protect-badge circle {
-  fill: var(--mob-panel-raised);
-  stroke: var(--mob-muted);
+  fill: #fff;
+  stroke: #9298a1;
   stroke-width: 1.5;
 }
-.vehicle-glyph .glyph-protect-badge path { fill: var(--mob-muted); }
+.vehicle-glyph .glyph-protect-badge path { fill: #9298a1; }
 .vehicle-glyph.is-soc-protected .glyph-protect-badge { opacity: 1; }
 .vehicle-glyph.is-disconnected { opacity: .45; }
 
@@ -180,86 +142,675 @@
   50% { opacity: 1; }
 }
 
-.hero-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  font-size: 15px;
-  font-weight: 600;
-}
-.hero-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--mob-muted);
-}
-.hero-status-dot.is-charging { background: var(--mob-yellow); box-shadow: 0 0 0 4px var(--mob-yellow-soft); }
-.hero-status-dot.is-discharging { background: var(--mob-amber); }
-.hero-status-dot.is-soc-protected { background: var(--mob-muted); }
-.hero-status-dot.is-disconnected { background: #4a4a46; }
+/* ==================================================================== */
+/* SKIN A — HoneyCharge Charge (E-pit inspired)                          */
+/* ==================================================================== */
+.hc-mobile[data-skin="epit"] {
+  --epit-dark: #222733;
+  --epit-dark-secondary: #2a303c;
+  --epit-primary: #27c9b8;
+  --epit-primary-dark: #18b8aa;
+  --epit-mint: #a5efe6;
+  --epit-mint-soft: #ddf8f5;
+  --epit-white: #ffffff;
+  --epit-background: #f5f6f7;
+  --epit-text: #17191b;
+  --epit-text-secondary: #656b73;
+  --epit-text-disabled: #989da4;
+  --epit-border: #e5e7e9;
 
-.hero-status-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.hero-lock-icon { color: var(--mob-muted); }
-
-.hero-power {
-  margin-left: auto;
-  font-variant-numeric: tabular-nums;
-  color: var(--mob-muted);
-  font-weight: 500;
+  --skin-bg: var(--epit-background);
 }
 
-.hero-eta {
-  margin: 8px 0 0;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--mob-muted);
-}
-
-/* Info grid */
-.info-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.info-tile {
+.epit-home {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 14px 14px 16px;
-  border-radius: 18px;
-  background: var(--mob-panel);
-  border: 1px solid var(--mob-line);
+  background: var(--epit-background);
+  padding-bottom: 88px;
 }
-.info-tile-head {
+
+.epit-dark-zone {
+  background: var(--epit-dark);
+  padding: 14px 20px 22px;
+  color: #fff;
+}
+
+.epit-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
-  color: var(--mob-muted);
+  justify-content: space-between;
+  height: 34px;
 }
-.info-tile strong {
-  font-size: 21px;
+.epit-logo {
+  font-size: 17px;
   font-weight: 700;
   letter-spacing: -.01em;
 }
-.info-tile-sub {
-  font-size: 11.5px;
-  color: var(--mob-muted);
-  line-height: 1.4;
+.epit-logo span { color: var(--epit-primary); }
+.epit-header-icons {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #fff;
 }
-.info-tile.is-reward strong { color: var(--mob-yellow); }
-.info-tile.is-reward { border-color: rgba(242,194,48,.28); }
-.info-tile.is-signal.is-surplus { border-color: rgba(74,222,128,.28); }
-.info-tile.is-signal.is-surplus strong { color: var(--mob-green); }
-.info-tile.is-signal.is-peak { border-color: rgba(245,158,11,.28); }
-.info-tile.is-signal.is-peak strong { color: var(--mob-amber); }
 
-/* Placeholder secondary screens */
+.epit-tabs {
+  display: flex;
+  gap: 18px;
+  margin-top: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, .12);
+}
+.epit-tabs button {
+  padding: 0 0 10px;
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, .55);
+  border-bottom: 2px solid transparent;
+}
+.epit-tabs button.is-active {
+  color: #fff;
+  font-weight: 700;
+  border-bottom-color: #fff;
+}
+
+.epit-vehicle-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+}
+.epit-vehicle-name-row strong {
+  font-size: 20px;
+  font-weight: 700;
+}
+.epit-v2g-badge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  background: rgba(39, 201, 184, .16);
+  color: var(--epit-primary);
+}
+.epit-v2g-badge.is-disconnected {
+  background: rgba(255, 255, 255, .1);
+  color: rgba(255, 255, 255, .55);
+}
+.epit-v2g-badge.is-soc-protected {
+  background: rgba(255, 255, 255, .1);
+  color: rgba(255, 255, 255, .75);
+}
+
+.epit-vehicle-stage {
+  display: flex;
+  justify-content: center;
+  margin: 6px 0;
+}
+.epit-vehicle-stage .vehicle-glyph {
+  width: 68%;
+  max-width: 220px;
+  color: #cfd3d8;
+}
+.epit-vehicle-stage .glyph-body { fill: #e9ebed; }
+.epit-vehicle-stage .glyph-glass { fill: #b7bcc2; }
+.epit-vehicle-stage .glyph-wheel { fill: #14161a; stroke: #40444b; }
+.epit-vehicle-stage .glyph-shadow { fill: rgba(0, 0, 0, .3); }
+.epit-vehicle-stage .glyph-charge-flow path,
+.epit-vehicle-stage .glyph-discharge-flow path {
+  stroke: var(--epit-primary);
+}
+.epit-vehicle-stage .glyph-protect-badge circle {
+  fill: var(--epit-dark-secondary);
+  stroke: rgba(255, 255, 255, .4);
+}
+.epit-vehicle-stage .glyph-protect-badge path { fill: #fff; }
+
+.epit-soc-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  color: var(--epit-primary);
+}
+.epit-soc-row strong {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+.epit-soc-range {
+  font-size: 13px;
+  color: rgba(255, 255, 255, .55);
+  margin-left: 4px;
+}
+
+.epit-summary-panel {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 18px;
+  padding: 14px 4px;
+  border-radius: 9px;
+  background: var(--epit-dark-secondary);
+}
+.epit-summary-panel div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+  border-left: 1px solid rgba(255, 255, 255, .08);
+}
+.epit-summary-panel div:first-child { border-left: none; }
+.epit-summary-panel span {
+  font-size: 11px;
+  color: rgba(255, 255, 255, .5);
+}
+.epit-summary-panel strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+.epit-summary-panel strong.is-accent { color: var(--epit-primary); }
+
+.epit-light-zone {
+  margin-top: -10px;
+  border-radius: 14px 14px 0 0;
+  background: var(--epit-background);
+  padding: 20px 20px 8px;
+  position: relative;
+}
+
+.epit-mint-card {
+  background: var(--epit-mint);
+  border-radius: 8px;
+  padding: 16px;
+}
+.epit-mint-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--epit-text-secondary);
+}
+.epit-mint-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--epit-text);
+}
+.epit-mint-card p {
+  margin: 10px 0 14px;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--epit-text);
+}
+.epit-mint-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.epit-btn-outline,
+.epit-btn-filled {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.epit-btn-outline {
+  background: #fff;
+  border: 1px solid var(--epit-primary);
+  color: var(--epit-primary-dark);
+}
+.epit-btn-filled {
+  background: var(--epit-primary);
+  color: #fff;
+}
+
+.epit-chip-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  overflow-x: auto;
+}
+.epit-chip {
+  padding: 7px 13px;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+  background: #fff;
+  border: 1px solid var(--epit-border);
+  color: var(--epit-text-secondary);
+}
+.epit-chip.is-solid {
+  background: var(--epit-text-disabled);
+  border-color: var(--epit-text-disabled);
+  color: #fff;
+}
+
+.epit-fixed-cta {
+  position: fixed;
+  left: 50%;
+  bottom: 64px;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 430px;
+  padding: 0 16px;
+}
+.epit-fixed-cta button {
+  width: 100%;
+  height: 54px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(90deg, #28d0bc, #48d6db, #62d9ec);
+  box-shadow: 0 6px 16px rgba(39, 201, 184, .35);
+}
+.epit-fixed-cta button:disabled {
+  background: var(--epit-text-disabled);
+  box-shadow: none;
+  opacity: .7;
+}
+
+/* ---------------------------------------------------------------- */
+/* E-pit focus screens (charging / discharging)                      */
+/* ---------------------------------------------------------------- */
+.epit-focus {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 44px);
+  background: #fff;
+}
+.epit-focus-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 0;
+  color: var(--epit-text);
+  font-size: 15px;
+  font-weight: 700;
+}
+.epit-focus-station {
+  margin: 18px 0 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--epit-primary);
+}
+.epit-focus-station i {
+  display: inline-block;
+  width: 1px;
+  height: 10px;
+  margin: 0 6px;
+  background: var(--epit-border);
+  font-style: normal;
+}
+.epit-focus-lead {
+  margin: 8px 0 0;
+  padding: 0 24px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--epit-text);
+}
+
+.epit-focus-gradient {
+  flex: 1;
+  margin-top: 20px;
+  padding: 34px 26px 26px;
+  background: linear-gradient(180deg, #b7f5ef 0%, #9dece7 45%, #72dce9 100%);
+}
+.epit-focus-gradient.is-discharging {
+  background: linear-gradient(180deg, #b7f5ef 0%, #a9dcec 45%, #8fb9e6 100%);
+}
+
+.epit-focus-soc {
+  display: flex;
+  align-items: flex-start;
+}
+.epit-focus-soc strong {
+  font-size: clamp(72px, 20vw, 96px);
+  font-weight: 400;
+  letter-spacing: -4px;
+  color: var(--epit-text);
+  line-height: 1;
+}
+.epit-focus-soc span {
+  margin-top: 10px;
+  font-size: 36px;
+  color: var(--epit-text-secondary);
+}
+
+.epit-focus-eta {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--epit-text-secondary);
+}
+
+.epit-focus-metrics {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-top: 30px;
+}
+.epit-focus-metrics div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.epit-focus-metrics span {
+  font-size: 12px;
+  color: var(--epit-text-secondary);
+}
+.epit-focus-metrics strong {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--epit-text);
+}
+.epit-focus-divider {
+  width: 1px;
+  height: 30px;
+  background: rgba(23, 25, 27, .15);
+}
+
+.epit-focus-stop {
+  width: 100%;
+  height: 50px;
+  margin-top: 30px;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--epit-text);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* SOC protection completion */
+.epit-focus.is-protected {
+  align-items: center;
+  padding: 40px 24px 24px;
+  text-align: center;
+}
+.epit-protect-complete {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--epit-primary-dark);
+}
+.epit-protect-card {
+  width: 100%;
+  max-width: 340px;
+  margin-top: 26px;
+  padding: 26px 22px;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, .08);
+}
+.epit-protect-lock {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: var(--epit-mint-soft);
+  color: var(--epit-primary-dark);
+}
+.epit-protect-copy {
+  margin: 14px 0 20px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--epit-text);
+}
+.epit-protect-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--epit-border);
+}
+.epit-protect-grid div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.epit-protect-grid span { font-size: 10.5px; color: var(--epit-text-secondary); }
+.epit-protect-grid strong { font-size: 15px; font-weight: 700; color: var(--epit-text); }
+.epit-protect-grid strong.is-accent { color: var(--epit-primary-dark); }
+.epit-protect-btn {
+  width: 100%;
+  max-width: 340px;
+  margin-top: 24px;
+  height: 48px;
+  border-radius: 6px;
+  justify-content: center;
+}
+
+/* ==================================================================== */
+/* SKIN B — HoneyCharge My Car (myHyundai inspired)                      */
+/* ==================================================================== */
+.hc-mobile[data-skin="myhyundai"] {
+  --myh-blue: #002c5f;
+  --myh-blue-light: #0b4a82;
+  --myh-blue-soft: #eaf1f7;
+  --myh-background: #f5f7f9;
+  --myh-card: #ffffff;
+  --myh-text: #18212a;
+  --myh-text-secondary: #68737e;
+  --myh-border: #e5e9ed;
+
+  --skin-bg: #fff;
+}
+
+.hc-mobile[data-skin="myhyundai"] .mobile-shell {
+  color: var(--myh-text);
+  padding-bottom: 88px;
+}
+
+.myh-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 20px;
+}
+.myh-brand {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--myh-blue);
+}
+.myh-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--myh-text);
+}
+
+.myh-title {
+  margin: 6px 20px 0;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.myh-soc-row {
+  margin: 14px 20px 0;
+}
+.myh-soc-row > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.myh-soc-row strong {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+.myh-soc-row span {
+  font-size: 15px;
+  color: var(--myh-text-secondary);
+}
+.myh-soc-bar {
+  width: 100%;
+  height: 4px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: var(--myh-border);
+  overflow: hidden;
+}
+.myh-soc-bar i {
+  display: block;
+  height: 100%;
+  background: var(--myh-blue);
+  border-radius: inherit;
+}
+
+.myh-vehicle {
+  width: 100%;
+  max-width: 280px;
+  margin: 10px auto 0;
+  padding: 0 20px;
+}
+.myh-vehicle .vehicle-glyph { color: #b9bdc6; }
+
+.myh-state-line {
+  margin: 4px 20px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.myh-state-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--myh-text-secondary);
+}
+.myh-state-dot.is-charging,
+.myh-state-dot.is-discharging { background: var(--myh-blue); }
+.myh-lock-icon { color: var(--myh-text-secondary); }
+.myh-power { color: var(--myh-text-secondary); font-weight: 500; }
+.myh-sub-line {
+  margin: 3px 20px 0;
+  font-size: 12.5px;
+  color: var(--myh-text-secondary);
+}
+
+.myh-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 22px 20px 0;
+}
+.myh-quick-actions button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--myh-text);
+}
+.myh-quick-actions span {
+  font-size: 12.5px;
+  color: var(--myh-text-secondary);
+}
+
+.myh-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: calc(100% - 40px);
+  margin: 22px 20px 0;
+  padding: 18px 18px 20px;
+  border-radius: 16px;
+  background: var(--myh-card);
+  border: 1px solid var(--myh-border);
+  box-shadow: 0 3px 12px rgba(0, 44, 95, .05);
+}
+.myh-card-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--myh-blue);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.myh-card-headline {
+  font-size: 18px;
+  font-weight: 700;
+}
+.myh-card-detail {
+  font-size: 12.5px;
+  color: var(--myh-text-secondary);
+  line-height: 1.5;
+}
+.myh-card-footer {
+  width: 100%;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--myh-text-secondary);
+}
+.myh-card-footer strong { color: var(--honey-yellow); }
+.myh-card-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--myh-blue);
+}
+
+/* myHyundai — vehicle status screen */
+.myhv-screen {
+  padding: 20px 24px 8px;
+}
+.myhv-title {
+  margin: 4px 0 0;
+  font-size: 19px;
+  font-weight: 700;
+}
+.myhv-stage {
+  width: 100%;
+  max-width: 260px;
+  margin: 28px auto;
+}
+.myhv-stage .vehicle-glyph { color: #b9bdc6; }
+.myhv-rows {
+  margin: 0;
+  border-top: 1px solid var(--myh-border);
+}
+.myhv-rows > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 2px;
+  border-bottom: 1px solid var(--myh-border);
+}
+.myhv-rows dt {
+  font-size: 14px;
+  color: var(--myh-text-secondary);
+}
+.myhv-rows dd {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* ==================================================================== */
+/* Shared secondary screens                                              */
+/* ==================================================================== */
 .placeholder-screen {
   flex: 1;
   display: flex;
@@ -268,10 +819,11 @@
   justify-content: center;
   text-align: center;
   gap: 8px;
+  margin: 20px;
   padding: 48px 24px;
-  border-radius: 20px;
-  background: var(--mob-panel);
-  border: 1px solid var(--mob-line);
+  border-radius: 14px;
+  background: var(--epit-card, var(--myh-card, #fff));
+  border: 1px solid var(--epit-border, var(--myh-border, #e5e5e5));
   min-height: 320px;
 }
 .placeholder-icon {
@@ -280,16 +832,19 @@
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: var(--mob-panel-raised);
-  color: var(--mob-yellow);
+  background: var(--epit-background, var(--myh-background, #f5f5f5));
+  color: var(--epit-primary, var(--myh-blue, #333));
   margin-bottom: 6px;
 }
-.placeholder-screen strong { font-size: 16px; }
+.placeholder-screen strong {
+  font-size: 16px;
+  color: var(--epit-text, var(--myh-text, #17191b));
+}
 .placeholder-screen p {
   margin: 0;
   max-width: 260px;
   font-size: 13px;
-  color: var(--mob-muted);
+  color: var(--epit-text-secondary, var(--myh-text-secondary, #666));
   line-height: 1.6;
 }
 .placeholder-badge {
@@ -297,24 +852,133 @@
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 11px;
-  background: var(--mob-panel-raised);
-  color: var(--mob-muted);
+  background: var(--epit-background, var(--myh-background, #f0f0f0));
+  color: var(--epit-text-secondary, var(--myh-text-secondary, #666));
 }
 
-/* Bottom nav */
+/* Skin settings — always shows both reference palettes regardless of
+   the currently active skin, so the mock colors are intentionally
+   hardcoded rather than driven by the active data-skin tokens. */
+.skin-settings {
+  padding: 20px 20px 8px;
+  color: var(--epit-text, var(--myh-text, #17191b));
+}
+.skin-settings h1 { margin: 4px 0 2px; font-size: 18px; }
+.skin-settings-hint {
+  margin: 0 0 16px;
+  font-size: 12.5px;
+  color: var(--epit-text-secondary, var(--myh-text-secondary, #666));
+}
+.skin-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.skin-preview-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+}
+.skin-preview-card.is-selected { border-color: var(--honey-yellow); border-width: 2px; }
+.skin-preview-mock {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.skin-preview-mock.is-epit {
+  background: #222733;
+  color: #fff;
+}
+.skin-preview-mock.is-epit .skin-preview-mock-accent {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 22px;
+  background: #a5efe6;
+}
+.skin-preview-mock.is-myhyundai {
+  background: #f5f7f9;
+  color: #002c5f;
+  border: 1px solid #e5e9ed;
+}
+.skin-preview-mock.is-myhyundai .skin-preview-mock-accent {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 10px;
+  height: 3px;
+  border-radius: 999px;
+  background: #002c5f;
+}
+.skin-preview-mock strong { font-size: 15px; font-weight: 700; z-index: 1; }
+.skin-preview-copy {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+.skin-preview-copy strong { font-size: 14px; }
+.skin-preview-copy small {
+  font-size: 11px;
+  color: var(--epit-text-secondary, var(--myh-text-secondary, #666));
+}
+.skin-preview-copy span {
+  font-size: 12px;
+  color: var(--epit-text-secondary, var(--myh-text-secondary, #666));
+  margin-top: 2px;
+}
+.skin-preview-radio {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  color: #666;
+  background: #f0f0f0;
+}
+.skin-preview-radio.is-selected {
+  background: var(--honey-yellow);
+  color: #1a1400;
+  font-weight: 600;
+}
+
+/* ==================================================================== */
+/* Bottom nav — shared skeleton, skin-driven colors                      */
+/* ==================================================================== */
 .bottom-nav {
   position: fixed;
   left: 50%;
   bottom: 0;
   transform: translateX(-50%);
   width: 100%;
-  max-width: 460px;
+  max-width: 430px;
   display: flex;
   justify-content: space-between;
-  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
-  background: rgba(10,10,10,.92);
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1px solid #eceff2;
+}
+.hc-mobile[data-skin="epit"] .bottom-nav {
+  background: rgba(34, 39, 51, .96);
+  border-top-color: rgba(255, 255, 255, .08);
   backdrop-filter: blur(14px);
-  border-top: 1px solid var(--mob-line);
 }
 .bottom-nav-item {
   flex: 1;
@@ -323,12 +987,14 @@
   align-items: center;
   gap: 3px;
   padding: 4px 0;
-  font-size: 10.5px;
-  color: var(--mob-muted);
+  font-size: 10px;
+  color: #9299a1;
 }
-.bottom-nav-item.active { color: var(--mob-yellow); }
+.hc-mobile[data-skin="epit"] .bottom-nav-item { color: rgba(255, 255, 255, .45); }
+.bottom-nav-item.active { color: var(--myh-blue, #002c5f); }
+.hc-mobile[data-skin="epit"] .bottom-nav-item.active { color: var(--epit-primary, #27c9b8); }
 
 @media (max-width: 360px) {
-  .hero-soc strong { font-size: 46px; }
-  .info-grid { gap: 8px; }
+  .epit-focus-soc strong { font-size: 64px; }
+  .myh-soc-row strong { font-size: 28px; }
 }
