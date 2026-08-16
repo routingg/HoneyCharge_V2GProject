@@ -1,11 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CarFront, Gift, PlugZap, Zap } from "lucide-react";
+import { CarFront, Gift } from "lucide-react";
 import { BottomNav } from "@/components/mobile/BottomNav";
 import { EpitFocusScreen } from "@/components/mobile/EpitFocusScreen";
 import { EpitHome } from "@/components/mobile/EpitHome";
+import { EpitSocSettings } from "@/components/mobile/EpitSocSettings";
+import { EpitStationMap } from "@/components/mobile/EpitStationMap";
+import { EpitV2GSchedule } from "@/components/mobile/EpitV2GSchedule";
 import { MyHyundaiHome } from "@/components/mobile/MyHyundaiHome";
+import { MyHyundaiSocSettings } from "@/components/mobile/MyHyundaiSocSettings";
+import { MyHyundaiStationMap } from "@/components/mobile/MyHyundaiStationMap";
+import { MyHyundaiV2GSchedule } from "@/components/mobile/MyHyundaiV2GSchedule";
 import { MyHyundaiVehicle } from "@/components/mobile/MyHyundaiVehicle";
 import { PlaceholderScreen } from "@/components/mobile/PlaceholderScreen";
 import { SkinProvider, useSkin } from "@/components/mobile/SkinProvider";
@@ -19,6 +25,7 @@ import {
   getDemoUserSchedule,
   getEnergySignalCopy,
   getRecommendedMinimumSoc,
+  getScheduleBlocks,
   getSessionEnergy,
   getTodayV2GWindow,
   type HomeViewModel,
@@ -28,6 +35,7 @@ import { runSimulation } from "@/lib/services/simulationService";
 export type MobileView =
   | "home"
   | "v2g"
+  | "soc"
   | "stations"
   | "rewards"
   | "myVehicle"
@@ -85,6 +93,10 @@ function MobileShell() {
     signalCopy: getEnergySignalCopy(simulation.energy[hour], v2gWindow),
     sessionEnergy: getSessionEnergy(schedule, hour),
   };
+  const scheduleBlocks = useMemo(
+    () => getScheduleBlocks(schedule),
+    [schedule],
+  );
 
   return (
     <div className="hc-mobile" data-skin={skin}>
@@ -130,20 +142,30 @@ function MobileShell() {
 
         {view === "settings" && <SkinSettings />}
 
-        {view === "v2g" && (
-          <PlaceholderScreen
-            icon={Zap}
-            title="V2G 일정"
-            description="오늘과 이번 주의 전력 공유 일정을 한눈에 볼 수 있는 화면을 준비 중이에요."
-          />
-        )}
-        {view === "stations" && (
-          <PlaceholderScreen
-            icon={PlugZap}
-            title="충전소"
-            description="주변 충전소 검색과 혼잡도 안내를 준비 중이에요."
-          />
-        )}
+        {view === "v2g" &&
+          (skin === "epit" ? (
+            <EpitV2GSchedule
+              blocks={scheduleBlocks}
+              chargeEnergyKWh={schedule.chargeEnergyKWh}
+              dischargeEnergyKWh={schedule.dischargeEnergyKWh}
+              rewardPoints={schedule.rewardPoints}
+            />
+          ) : (
+            <MyHyundaiV2GSchedule
+              blocks={scheduleBlocks}
+              chargeEnergyKWh={schedule.chargeEnergyKWh}
+              dischargeEnergyKWh={schedule.dischargeEnergyKWh}
+              rewardPoints={schedule.rewardPoints}
+            />
+          ))}
+        {view === "soc" &&
+          (skin === "epit" ? (
+            <EpitSocSettings vm={vm} />
+          ) : (
+            <MyHyundaiSocSettings vm={vm} />
+          ))}
+        {view === "stations" &&
+          (skin === "epit" ? <EpitStationMap /> : <MyHyundaiStationMap />)}
         {view === "rewards" && (
           <PlaceholderScreen
             icon={Gift}
@@ -163,7 +185,13 @@ function MobileShell() {
           ))}
 
         <BottomNav
-          view={view === "settings" || view === "focus" ? "home" : view}
+          view={
+            view === "settings" || view === "focus"
+              ? "home"
+              : view === "soc"
+                ? "myVehicle"
+                : view
+          }
           onNavigate={setView}
         />
       </div>

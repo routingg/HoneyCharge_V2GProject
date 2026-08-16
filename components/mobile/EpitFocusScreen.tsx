@@ -1,7 +1,7 @@
 import { CheckCircle2, Home, Lock, RefreshCw } from "lucide-react";
 import type { HomeViewModel } from "@/lib/services/mobileHomeService";
 
-const DEMO_STATION_NAME = "서울역";
+const DEMO_STATION_NAME = "제주 ICC 충전소";
 
 /**
  * E-pit의 시그니처 충전 화면을 재현합니다: 상단 화이트 영역(제목·위치·

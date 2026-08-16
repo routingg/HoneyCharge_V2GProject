@@ -85,7 +85,7 @@ export function MyHyundaiHome({
           <Zap size={22} strokeWidth={1.6} />
           <span>V2G</span>
         </button>
-        <button type="button" onClick={() => onNavigate("myVehicle")}>
+        <button type="button" onClick={() => onNavigate("soc")}>
           <Lock size={22} strokeWidth={1.6} />
           <span>SOC</span>
         </button>

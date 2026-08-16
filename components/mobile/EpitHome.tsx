@@ -100,10 +100,10 @@ export function EpitHome({
         </div>
 
         <div className="epit-summary-panel">
-          <div>
+          <button type="button" onClick={() => onNavigate("soc")}>
             <span>최소 SOC</span>
             <strong>{vm.minimumSoc}%</strong>
-          </div>
+          </button>
           <div>
             <span>오늘 보상</span>
             <strong className="is-accent">{vm.rewardPoints}P</strong>

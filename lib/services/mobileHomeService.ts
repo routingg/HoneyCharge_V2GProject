@@ -98,6 +98,74 @@ export function getRecommendedMinimumSoc(vehicle: Vehicle): number {
   return Math.max(20, vehicle.minimumSoc - 3);
 }
 
+export interface ScheduleBlock {
+  action: "charge" | "discharge";
+  startTime: string;
+  endTime: string;
+  energyKWh: number;
+  avgPowerKw: number;
+}
+
+/**
+ * 오늘 하루의 충전·방전 구간을 시작~끝 시각 블록으로 묶습니다. V2G
+ * 일정 화면이 시간별 items 배열을 직접 순회하지 않도록 한 번만
+ * 계산해서 공유합니다.
+ */
+export function getScheduleBlocks(
+  schedule: VehicleSchedule,
+): ScheduleBlock[] {
+  const blocks: ScheduleBlock[] = [];
+  let current: {
+    action: "charge" | "discharge";
+    startHour: number;
+    endHour: number;
+    powerKwSum: number;
+    hours: number;
+  } | null = null;
+
+  const flush = () => {
+    if (!current) return;
+    blocks.push({
+      action: current.action,
+      startTime: schedule.items[current.startHour].timestamp.slice(11, 16),
+      endTime:
+        current.endHour + 1 < schedule.items.length
+          ? schedule.items[current.endHour + 1].timestamp.slice(11, 16)
+          : "24:00",
+      energyKWh: Number(current.powerKwSum.toFixed(1)),
+      avgPowerKw: Number(
+        (current.powerKwSum / current.hours).toFixed(1),
+      ),
+    });
+    current = null;
+  };
+
+  schedule.items.forEach((item, hour) => {
+    const action = item.action;
+    if (action !== "charge" && action !== "discharge") {
+      flush();
+      return;
+    }
+    if (current && current.action === action) {
+      current.endHour = hour;
+      current.powerKwSum += item.powerKw;
+      current.hours += 1;
+    } else {
+      flush();
+      current = {
+        action,
+        startHour: hour,
+        endHour: hour,
+        powerKwSum: item.powerKw,
+        hours: 1,
+      };
+    }
+  });
+  flush();
+
+  return blocks;
+}
+
 /**
  * 지금 충전 중이 아니면 null입니다. 충전 중이면, 지금 이후 처음으로
  * 충전이 멈추는 시각(완충 또는 잉여전력 종료)을 "HH:mm"으로 반환합니다.
