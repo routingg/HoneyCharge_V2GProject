@@ -628,8 +628,9 @@
   padding: 0 20px;
 }
 .myh-brand {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -.01em;
   color: var(--myh-blue);
 }
 .myh-icon-btn {
@@ -678,13 +679,48 @@
   border-radius: inherit;
 }
 
-.myh-vehicle {
-  width: 100%;
-  max-width: 280px;
-  margin: 10px auto 0;
-  padding: 0 20px;
+.myh-vehicle-stage {
+  position: relative;
+  margin: 18px 16px 0;
+  padding: 30px 16px 14px;
+  border-radius: 28px;
+  background: radial-gradient(
+    120% 100% at 50% 0%,
+    #eef2f6 0%,
+    #f6f8fa 55%,
+    #ffffff 100%
+  );
+  overflow: hidden;
 }
-.myh-vehicle .vehicle-glyph { color: #b9bdc6; }
+.myh-vehicle-stage .vehicle-glyph {
+  width: 92%;
+  max-width: 320px;
+  margin: 0 auto;
+  display: block;
+  color: #aab0ba;
+  filter: drop-shadow(0 20px 18px rgba(16, 40, 70, .16));
+}
+.myh-vehicle-stage .glyph-body { fill: #f4f5f7; }
+.myh-vehicle-stage .glyph-glass { fill: #d3d7dc; }
+.myh-vehicle-stage .glyph-wheel { fill: #171d27; stroke: #454c58; }
+.myh-vehicle-stage .glyph-shadow { fill: rgba(16, 40, 70, .12); }
+
+.myh-stage-dots {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin: 10px 0 0;
+}
+.myh-stage-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--myh-border);
+}
+.myh-stage-dots span.is-active {
+  width: 14px;
+  background: var(--myh-blue);
+}
 
 .myh-state-line {
   margin: 4px 20px 0;
@@ -722,6 +758,19 @@
   gap: 8px;
   color: var(--myh-text);
 }
+.myh-quick-actions span.myh-quick-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: var(--myh-blue-soft);
+  color: var(--myh-blue);
+  transition: transform .15s ease;
+}
+.myh-quick-actions button:active .myh-quick-icon {
+  transform: scale(.93);
+}
 .myh-quick-actions span {
   font-size: 12.5px;
   color: var(--myh-text-secondary);
@@ -734,17 +783,30 @@
   width: calc(100% - 40px);
   margin: 22px 20px 0;
   padding: 18px 18px 20px;
-  border-radius: 16px;
+  border-radius: 20px;
   background: var(--myh-card);
   border: 1px solid var(--myh-border);
-  box-shadow: 0 3px 12px rgba(0, 44, 95, .05);
+  border-left: 3px solid var(--myh-blue);
+  box-shadow: 0 8px 20px rgba(0, 44, 95, .07);
 }
 .myh-card-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   font-weight: 600;
   color: var(--myh-blue);
   text-transform: uppercase;
   letter-spacing: .04em;
+}
+.myh-card-icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 7px;
+  background: var(--myh-blue);
+  color: #fff;
 }
 .myh-card-headline {
   font-size: 18px;
@@ -784,11 +846,31 @@
   font-weight: 700;
 }
 .myhv-stage {
+  position: relative;
   width: 100%;
-  max-width: 260px;
-  margin: 28px auto;
+  margin: 20px 0 8px;
+  padding: 30px 16px 14px;
+  border-radius: 28px;
+  background: radial-gradient(
+    120% 100% at 50% 0%,
+    #eef2f6 0%,
+    #f6f8fa 55%,
+    #ffffff 100%
+  );
+  overflow: hidden;
 }
-.myhv-stage .vehicle-glyph { color: #b9bdc6; }
+.myhv-stage .vehicle-glyph {
+  width: 84%;
+  max-width: 300px;
+  margin: 0 auto;
+  display: block;
+  color: #aab0ba;
+  filter: drop-shadow(0 18px 16px rgba(16, 40, 70, .16));
+}
+.myhv-stage .glyph-body { fill: #f4f5f7; }
+.myhv-stage .glyph-glass { fill: #d3d7dc; }
+.myhv-stage .glyph-wheel { fill: #171d27; stroke: #454c58; }
+.myhv-stage .glyph-shadow { fill: rgba(16, 40, 70, .12); }
 .myhv-rows {
   margin: 0;
   border-top: 1px solid var(--myh-border);

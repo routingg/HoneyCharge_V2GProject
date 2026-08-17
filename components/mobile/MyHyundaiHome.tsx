@@ -66,8 +66,13 @@ export function MyHyundaiHome({
         </div>
       </div>
 
-      <div className="myh-vehicle">
+      <div className="myh-vehicle-stage">
         <VehicleGlyph state={vm.energyState} />
+      </div>
+      <div className="myh-stage-dots" aria-hidden="true">
+        <span className="is-active" />
+        <span />
+        <span />
       </div>
 
       <p className="myh-state-line">
@@ -82,19 +87,27 @@ export function MyHyundaiHome({
 
       <div className="myh-quick-actions">
         <button type="button" onClick={() => onNavigate("v2g")}>
-          <Zap size={22} strokeWidth={1.6} />
+          <span className="myh-quick-icon">
+            <Zap size={20} strokeWidth={1.6} />
+          </span>
           <span>V2G</span>
         </button>
         <button type="button" onClick={() => onNavigate("soc")}>
-          <Lock size={22} strokeWidth={1.6} />
+          <span className="myh-quick-icon">
+            <Lock size={20} strokeWidth={1.6} />
+          </span>
           <span>SOC</span>
         </button>
         <button type="button" onClick={() => onNavigate("v2g")}>
-          <CalendarClock size={22} strokeWidth={1.6} />
+          <span className="myh-quick-icon">
+            <CalendarClock size={20} strokeWidth={1.6} />
+          </span>
           <span>스케줄</span>
         </button>
         <button type="button" onClick={() => onNavigate("stations")}>
-          <MapPin size={22} strokeWidth={1.6} />
+          <span className="myh-quick-icon">
+            <MapPin size={20} strokeWidth={1.6} />
+          </span>
           <span>충전소</span>
         </button>
       </div>
@@ -104,7 +117,12 @@ export function MyHyundaiHome({
         className="myh-card"
         onClick={() => onNavigate("rewards")}
       >
-        <span className="myh-card-eyebrow">오늘의 HoneyCharge</span>
+        <span className="myh-card-eyebrow">
+          <span className="myh-card-icon">
+            <Zap size={13} strokeWidth={2} />
+          </span>
+          오늘의 HoneyCharge
+        </span>
         <strong className="myh-card-headline">{vm.signalCopy.headline}</strong>
         <span className="myh-card-detail">
           {vm.energyState === "charging" &&
