@@ -19,6 +19,7 @@ HoneyCharge는 제주·호남의 재생에너지 잉여 전력과 주차 중인 
 | `/` | 전력망 운영자 | 대시보드 — 발전·수요·V2G 통합 시뮬레이션과 인프라 지도 |
 | `/mobile` | 전기차 운전자 | Next.js로 만든 모바일 웹 데모 (E-pit / myHyundai 두 가지 앱 스킨) |
 | `/app` | 전기차 운전자 | 별도로 빌드된 HoneyCharge 드라이버 SPA (정적 산출물로 포함) |
+| `/validation` | 엔지니어·심사자 | 사용자 이동권 보장형 적응형 SOC를 검증하는 실험 대시보드 (신규) |
 
 ### `/` — 운영 대시보드
 
@@ -47,6 +48,16 @@ HoneyCharge는 제주·호남의 재생에너지 잉여 전력과 주차 중인 
 - **제주 관광명소 탐색**: 용두암·이호테우해변 등 제주 명소 30곳을 위치, 카테고리, 평균 체류시간, 입장료, 사진 출처(CC 라이선스 명시)와 함께 제공해, "충전 대기 시간 동안 근처에서 무엇을 할 수 있는지"를 안내합니다. `averageStayMinutes`로 예상 충전 완료 시각과 견주어 볼 수 있도록 설계되어 있습니다.
 - **즐겨찾기** 등 부가 기능도 포함되어 있습니다.
 - 이 SPA 자체의 소스 코드는 이 저장소에 없고 빌드 산출물만 포함되어 있어, 로직을 수정하려면 `honeycharge_app` 원본 프로젝트에서 작업 후 다시 `public/app/`에 빌드해 넣어야 합니다.
+
+### `/validation` — 이동권 보장 검증 대시보드 (상세, 신규)
+
+`app/validation/page.tsx` → `components/validation/ValidationDashboard.tsx`. 위 세 화면과는 목적이 다릅니다 — "V2G가 사용자의 이동권을 침해하지 않으면서 얼마나 더 많은 배터리를 쓸 수 있는가"라는 핵심 가설을 실험하고 검증하기 위한 화면입니다.
+
+- **실시간 파이프라인**: 이력 기반 출발 시각 예측 → 필요 이동 에너지 예측 → 보장 SOC 계산(이동 필요분 + 사용자 여유분 + 예측 불확실성 여유) → V2G 스케줄링 → 안전 상태 판정까지, 화면의 모든 숫자는 `lib/domain/**`의 실제 계산 결과입니다. 하드코딩된 시연값은 없습니다.
+- **Gemini 연동(선택)**: 일정이 바뀌면 서버의 `/api/ai/calendar/analyze`를 통해 Gemini가 일정의 이동 관련성을 분류하도록 시도하고, 사용할 수 없으면(`GEMINI_ENABLED=false`가 기본값) 결정론적 이력 기반 예측으로 자동 대체됩니다 — 어느 쪽이든 화면에 정직하게 표시됩니다.
+- **시나리오 제어**: 시작/일시정지/초기화, 1×/10×/60× 배속과 함께 출발 시각 앞당김·SOC 급감·통신 지연·충전기 분리 등 이벤트를 즉시 주입해 안전 상태 전환을 직접 확인할 수 있습니다.
+- **고정 SOC vs 적응형 SOC 비교**: `GET /api/validation/backtest`가 30일 합성 이동 이력에 대해 두 전략을 동일 조건으로 각각 실행해 이동권 보장률·V2G 방전량·안전 위반 건수를 비교합니다. 실제 실행 결과 예시와 방법론은 `docs/validation-methodology.md`, `docs/vcycle/07_validation_results.md`를 참고하세요.
+- 소프트웨어 시뮬레이션(SIL)이며 실제 차량·충전기·Hyundai API에는 연결되지 않습니다. 상세 아키텍처는 `docs/architecture.md`, 구현 현황은 `docs/implementation-status.md`를 참고하세요.
 
 ### 주요 기능
 
@@ -181,6 +192,7 @@ One repository serves three distinct surfaces:
 | `/` | Grid operator | Dashboard — combined generation/demand/V2G simulation and infrastructure map |
 | `/mobile` | EV driver | Next.js mobile web demo (two app skins: E-pit / myHyundai) |
 | `/app` | EV driver | Separately built HoneyCharge driver SPA (bundled as static output) |
+| `/validation` | Engineers / judges | Experiment dashboard validating mobility-protected adaptive SOC (new) |
 
 ### `/` — Operator Dashboard
 
@@ -209,6 +221,16 @@ A Next.js route where `app/mobile/page.tsx` renders `components/mobile/MobileApp
 - **Jeju attraction discovery**: 30 Jeju attractions (Yongduam Rock, Iho Tewoo Beach, and more) with location, category, average visit duration, admission fee, and photo credit (CC-licensed), so drivers can see what's nearby "while charging." The `averageStayMinutes` field is designed to be compared against the projected charge-complete time.
 - Also includes a **favorites** feature, among others.
 - The SPA's own source code is not in this repository — only the build output is included — so changing its logic requires working in the original `honeycharge_app` project and rebuilding into `public/app/`.
+
+### `/validation` — Mobility-Guarantee Validation Dashboard (Detailed, New)
+
+`app/validation/page.tsx` → `components/validation/ValidationDashboard.tsx`. This screen serves a different purpose than the three above — it exists to test and validate the central hypothesis that V2G can use more of a vehicle's battery **without compromising the owner's ability to drive when they need to**.
+
+- **Live pipeline**: historical departure prediction -> required trip-energy prediction -> guaranteed SOC (trip requirement + user reserve + prediction-uncertainty margin) -> V2G scheduling -> safety-state evaluation. Every number on screen is a real result from `lib/domain/**` — nothing is hardcoded.
+- **Optional Gemini integration**: when the calendar changes, the dashboard calls the server route `/api/ai/calendar/analyze`, which asks Gemini to classify the event's mobility relevance; if Gemini is unavailable (`GEMINI_ENABLED=false` by default), it transparently falls back to a deterministic historical heuristic — either way, the UI states honestly which path was used.
+- **Scenario controls**: start/pause/reset and 1×/10×/60× speed, plus instant event injection (earlier departure, SOC drop, communication delay, charger disconnect, etc.) to watch the safety state react in real time.
+- **Fixed vs. adaptive SOC comparison**: `GET /api/validation/backtest` runs both strategies against 30 days of identical synthetic trip history and compares mobility-guarantee rate, V2G discharge energy, and safety violations. See `docs/validation-methodology.md` and `docs/vcycle/07_validation_results.md` for real run results and methodology.
+- This is a software-in-the-loop (SIL) simulation — it does not connect to any real vehicle, charger, or Hyundai API. See `docs/architecture.md` for the full design and `docs/implementation-status.md` for what's done vs. outstanding.
 
 ### Key Features
 
@@ -343,6 +365,7 @@ HoneyCharge 是一个 V2G（车辆到电网）运营模拟器，用于连接济�
 | `/` | 电网运营方 | 仪表盘 —— 发电/需求/V2G 综合模拟与基础设施地图 |
 | `/mobile` | 电动车车主 | 基于 Next.js 的移动端网页演示（E-pit / myHyundai 两种应用皮肤） |
 | `/app` | 电动车车主 | 单独构建的 HoneyCharge 车主端 SPA（以静态产物形式内置） |
+| `/validation` | 工程师/评委 | 验证"移动权保护型"自适应 SOC 的实验仪表盘（新增） |
 
 ### `/` —— 运营仪表盘
 
@@ -371,6 +394,16 @@ HoneyCharge 是一个 V2G（车辆到电网）运营模拟器，用于连接济�
 - **济州景点探索**：提供龙头岩、梨湖泰宇海滩等 30 个济州景点，附带位置、类别、平均游览时长、门票价格及照片来源（标注 CC 许可），帮助车主了解"充电等待期间附近能做什么"。`averageStayMinutes` 字段设计用于与预计充电完成时间进行比对。
 - 还包含**收藏**等附加功能。
 - 该 SPA 本身的源代码不在本仓库中，仓库里只包含构建产物，如需修改其逻辑，需要在原始的 `honeycharge_app` 项目中进行开发，然后重新构建并放入 `public/app/`。
+
+### `/validation` —— 移动权保障验证仪表盘（详细说明，新增）
+
+由 `app/validation/page.tsx` → `components/validation/ValidationDashboard.tsx` 渲染。此界面目的与以上三者不同 —— 用于验证核心假设："V2G 能否在不损害车主出行能力的前提下，使用更多电池容量"。
+
+- **实时流水线**：基于历史的出发时间预测 -> 所需出行能量预测 -> 保障 SOC（出行所需 + 用户余量 + 预测不确定性余量）-> V2G 调度 -> 安全状态判定。屏幕上的每个数字都来自 `lib/domain/**` 的真实计算结果，没有硬编码演示值。
+- **可选的 Gemini 集成**：日程变更时，仪表盘会调用服务端路由 `/api/ai/calendar/analyze`，请求 Gemini 判断事件与出行的相关性；若 Gemini 不可用（默认 `GEMINI_ENABLED=false`），会自动、透明地回退到确定性的历史启发式算法 —— 无论哪种情况，界面都会如实说明所用的路径。
+- **场景控制**：开始/暂停/重置，1×/10×/60× 倍速，以及提前出发、SOC 骤降、通信延迟、充电器断开等事件的即时注入，可实时观察安全状态的变化。
+- **固定 SOC vs 自适应 SOC 对比**：`GET /api/validation/backtest` 会将两种策略在 30 天相同的合成出行历史上分别运行，对比移动权保障率、V2G 放电量与安全违规次数。真实运行结果与方法论详见 `docs/validation-methodology.md` 与 `docs/vcycle/07_validation_results.md`。
+- 这是软件在环（SIL）仿真，不连接任何真实车辆、充电桩或 Hyundai API。完整设计见 `docs/architecture.md`，实现现状见 `docs/implementation-status.md`。
 
 ### 主要功能
 
