@@ -50,7 +50,7 @@ export function fallbackMobilityContextAnalysis(
     vehicleNeedProbability,
     confidence: 0.3,
     notes: [
-      `Gemini unavailable: heuristic based on ${relevantEvents.length} located, non-all-day upcoming event(s).`,
+      `Gemini를 사용할 수 없어 규칙 기반으로 판단했어요 — 위치가 있는 예정 일정 ${relevantEvents.length}건을 참고했어요.`,
     ],
     source: "fallback",
   };

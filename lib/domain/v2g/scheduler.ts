@@ -33,6 +33,12 @@ export interface AdaptiveScheduleInput {
   weights?: OptimizerWeights;
   /** Minimum kWh worth discharging in one slot — avoids pointless micro-cycling. */
   minDischargeKWh?: number;
+  /**
+   * User-facing "Automatic V2G" switch. When false, the schedule never
+   * discharges — it still charges toward `guaranteedSoc` exactly as
+   * before. Defaults to true so existing callers are unaffected.
+   */
+  v2gEnabled?: boolean;
 }
 
 const DEFAULT_MIN_DISCHARGE_KWH = 0.3;
@@ -160,6 +166,7 @@ export function buildAdaptiveSchedule(
           socToKWh(input.guaranteedSoc, input.batteryCapacityKWh);
 
         if (
+          input.v2gEnabled !== false &&
           soc > input.guaranteedSoc &&
           availableForV2GKWh >= minDischargeKWh &&
           dischargeScore > 0 &&
@@ -180,6 +187,9 @@ export function buildAdaptiveSchedule(
           );
           reasonCode = "RENEWABLE_ABSORPTION";
           explanation = "재생에너지 잉여 전력을 배터리에 저장해요.";
+        } else if (input.v2gEnabled === false && soc > input.guaranteedSoc) {
+          reasonCode = "V2G_DISABLED_BY_USER";
+          explanation = "자동 V2G가 꺼져 있어 방전하지 않아요.";
         } else {
           reasonCode = soc <= input.guaranteedSoc ? "USER_RESERVE" : "GRID_BALANCED";
           explanation =

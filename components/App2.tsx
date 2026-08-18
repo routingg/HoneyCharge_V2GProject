@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   Area,
   Bar,
@@ -79,7 +84,40 @@ import type {
 } from "@/lib/types";
 
 type View = "dashboard" | "fleet" | "simulation";
+type AppTheme = "charge" | "mycar";
 type WeatherConnection = "loading" | "live" | "fallback";
+
+const APP_THEME_STORAGE_KEY = "honeycharge-app-theme";
+const DEFAULT_APP_THEME: AppTheme = "charge";
+
+function isAppTheme(value: string | null): value is AppTheme {
+  return value === "charge" || value === "mycar";
+}
+
+// Same useSyncExternalStore + localStorage pattern as SkinProvider.tsx
+// (/mobile) — reads/writes theme without a setState-in-effect on mount,
+// so server and first client render agree (no hydration mismatch) and a
+// stored "mycar" preference still applies on the very first paint.
+const appThemeListeners = new Set<() => void>();
+
+function subscribeAppTheme(onStoreChange: () => void) {
+  appThemeListeners.add(onStoreChange);
+  return () => appThemeListeners.delete(onStoreChange);
+}
+
+function getAppThemeSnapshot(): AppTheme {
+  const stored = window.localStorage.getItem(APP_THEME_STORAGE_KEY);
+  return isAppTheme(stored) ? stored : DEFAULT_APP_THEME;
+}
+
+function getAppThemeServerSnapshot(): AppTheme {
+  return DEFAULT_APP_THEME;
+}
+
+function writeAppTheme(next: AppTheme) {
+  window.localStorage.setItem(APP_THEME_STORAGE_KEY, next);
+  appThemeListeners.forEach((listener) => listener());
+}
 
 const statusClassName: Record<VehicleStatus, string> = {
   charging: "status-charge",
@@ -127,10 +165,14 @@ function Sidebar({
   onView,
   open,
   onClose,
+  theme,
+  onTheme,
 }: {
   view: View;
   onView: (view: View) => void;
   open: boolean;
+  theme: AppTheme;
+  onTheme: (theme: AppTheme) => void;
   onClose: () => void;
 }) {
   const { language } = useLanguage();
@@ -204,6 +246,50 @@ function Sidebar({
         </nav>
 
         <div className="sidebar-bottom">
+          <div className="theme-control">
+            <p className="theme-control-label">
+              {t("디자인 스킨", "DESIGN SKIN")}
+            </p>
+            <div className="theme-swatch-row">
+              <button
+                type="button"
+                className={
+                  theme === "charge"
+                    ? "theme-swatch-btn active"
+                    : "theme-swatch-btn"
+                }
+                aria-pressed={theme === "charge"}
+                onClick={() => onTheme("charge")}
+              >
+                <span className="theme-swatch-dots" aria-hidden="true">
+                  <span style={{ background: "#1b2330" }} />
+                  <span style={{ background: "#20c9c2" }} />
+                  <span style={{ background: "#aeebe7" }} />
+                  <span style={{ background: "#fff" }} />
+                </span>
+                <span className="theme-swatch-name">Charge</span>
+              </button>
+              <button
+                type="button"
+                className={
+                  theme === "mycar"
+                    ? "theme-swatch-btn active"
+                    : "theme-swatch-btn"
+                }
+                aria-pressed={theme === "mycar"}
+                onClick={() => onTheme("mycar")}
+              >
+                <span className="theme-swatch-dots" aria-hidden="true">
+                  <span style={{ background: "#002c5f" }} />
+                  <span style={{ background: "#5b9bdb" }} />
+                  <span style={{ background: "#c7d3de" }} />
+                  <span style={{ background: "#fff" }} />
+                </span>
+                <span className="theme-swatch-name">MyCar</span>
+              </button>
+            </div>
+          </div>
+
           <div className="operator">
             <span className="operator-avatar">
               {t("관", "OP")}
@@ -2717,11 +2803,16 @@ function SliderField({
   );
 }
 
-export function HoneyChargeApp() {
+export function App2() {
   const [language, setLanguage] = useState<Language>("ko");
   const [region, setRegion] = useState<Region>("jeju");
   const [view, setView] = useState<View>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const theme = useSyncExternalStore(
+    subscribeAppTheme,
+    getAppThemeSnapshot,
+    getAppThemeServerSnapshot,
+  );
   const [weatherState, setWeatherState] = useState<{
     region: Region;
     status: "live" | "fallback";
@@ -2806,12 +2897,14 @@ export function HoneyChargeApp() {
 
   return (
     <LanguageContext.Provider value={languageContextValue}>
-      <div className="app-shell">
+      <div className="app-shell" data-app-theme={theme}>
         <Sidebar
           view={view}
           onView={setView}
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
+          theme={theme}
+          onTheme={writeAppTheme}
         />
         <div className="app-main">
           <Header

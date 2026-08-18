@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CarFront } from "lucide-react";
+import { Wand2 } from "lucide-react";
 import { BottomNav } from "@/components/mobile/BottomNav";
 import { EpitFocusScreen } from "@/components/mobile/EpitFocusScreen";
 import { EpitHome } from "@/components/mobile/EpitHome";
@@ -10,16 +10,19 @@ import { EpitRewards } from "@/components/mobile/EpitRewards";
 import { EpitSocSettings } from "@/components/mobile/EpitSocSettings";
 import { EpitStationMap } from "@/components/mobile/EpitStationMap";
 import { EpitV2GSchedule } from "@/components/mobile/EpitV2GSchedule";
+import { EpitVehicle } from "@/components/mobile/EpitVehicle";
 import { MyHyundaiHome } from "@/components/mobile/MyHyundaiHome";
 import { MyHyundaiSocSettings } from "@/components/mobile/MyHyundaiSocSettings";
 import { MyHyundaiStationMap } from "@/components/mobile/MyHyundaiStationMap";
 import { MyHyundaiV2GSchedule } from "@/components/mobile/MyHyundaiV2GSchedule";
 import { MyHyundaiVehicle } from "@/components/mobile/MyHyundaiVehicle";
 import { MyHyundaiWallet } from "@/components/mobile/MyHyundaiWallet";
-import { PlaceholderScreen } from "@/components/mobile/PlaceholderScreen";
+import { NotificationsScreen } from "@/components/mobile/NotificationsScreen";
+import { CalendarSettingsScreen } from "@/components/mobile/CalendarSettingsScreen";
 import { SkinProvider, useSkin } from "@/components/mobile/SkinProvider";
 import { SkinSettings } from "@/components/mobile/SkinSettings";
 import { SkinSwitcher } from "@/components/mobile/SkinSwitcher";
+import { useLiveMobility } from "@/components/mobile/useLiveMobility";
 import { DEMO_CURRENT_HOUR } from "@/lib/data/mockData";
 import {
   deriveEnergyState,
@@ -28,7 +31,6 @@ import {
   getDemoUserSchedule,
   getEnergySignalCopy,
   getRecommendedMinimumSoc,
-  getScheduleBlocks,
   getSessionEnergy,
   getTodayV2GWindow,
   type HomeViewModel,
@@ -44,13 +46,14 @@ export type MobileView =
   | "myVehicle"
   | "settings"
   | "focus"
-  | "pnc";
+  | "pnc"
+  | "calendar"
+  | "notifications";
 
-const DEMO_HOUR_PRESETS: { hour: number; label: string }[] = [
-  { hour: 11, label: "11:00 여유" },
-  { hour: 16, label: "16:00 대기" },
-  { hour: 18, label: "18:00 공유" },
-  { hour: 21, label: "21:00 보호" },
+const TIME_JUMP_PRESETS: { label: string; minutes: number }[] = [
+  { label: "+2시간", minutes: 120 },
+  { label: "+6시간", minutes: 360 },
+  { label: "+12시간", minutes: 720 },
 ];
 
 export function MobileApp() {
@@ -64,7 +67,8 @@ export function MobileApp() {
 function MobileShell() {
   const { skin } = useSkin();
   const [rawView, setView] = useState<MobileView>("home");
-  const [hour, setHour] = useState(DEMO_CURRENT_HOUR);
+  const [hour] = useState(DEMO_CURRENT_HOUR);
+  const live = useLiveMobility();
 
   // "focus" and "pnc" only exist as E-pit screens — if the presenter
   // switches skin mid-flow, render Home instead of nothing (derived,
@@ -99,46 +103,63 @@ function MobileShell() {
     signalCopy: getEnergySignalCopy(simulation.energy[hour], v2gWindow),
     sessionEnergy: getSessionEnergy(schedule, hour),
   };
-  const scheduleBlocks = useMemo(
-    () => getScheduleBlocks(schedule),
-    [schedule],
-  );
-
   return (
     <div className="hc-mobile" data-skin={skin}>
       <div className="mobile-shell">
         <div className="presenter-strip">
-          <div className="demo-clock-bar" role="group" aria-label="시연 시각 이동">
-            <span>시연 시각</span>
+          <div className="demo-clock-bar" role="group" aria-label="시연 시나리오 제어">
+            <span>DEMO</span>
             <div>
-              {DEMO_HOUR_PRESETS.map((preset) => (
+              {TIME_JUMP_PRESETS.map((preset) => (
                 <button
-                  key={preset.hour}
+                  key={preset.minutes}
                   type="button"
-                  className={hour === preset.hour ? "active" : ""}
-                  onClick={() => setHour(preset.hour)}
+                  onClick={() => live.jumpBy(preset.minutes)}
                 >
                   {preset.label}
                 </button>
               ))}
+              <button type="button" onClick={live.triggerScheduleChange}>
+                <Wand2 size={11} style={{ display: "inline", marginRight: 3 }} />
+                일정 변경
+              </button>
+              <button type="button" onClick={live.reset}>
+                초기화
+              </button>
             </div>
           </div>
           <SkinSwitcher />
         </div>
 
-        {view === "home" &&
+        {view === "home" && live.vm &&
           (skin === "epit" ? (
             <EpitHome
               vm={vm}
+              mvm={live.vm}
+              scheduleChangeDiff={live.scheduleChangeDiff}
+              onDismissScheduleChange={live.dismissScheduleChangeDiff}
+              fetchExplanation={live.fetchExplanation}
+              fetchMobilityInsight={live.fetchMobilityInsight}
               onNavigate={setView}
               onOpenSettings={() => setView("settings")}
               onOpenFocus={() => setView("focus")}
+              onOpenCalendar={() => setView("calendar")}
+              onOpenNotifications={() => setView("notifications")}
+              notificationCount={live.notifications.length}
             />
           ) : (
             <MyHyundaiHome
               vm={vm}
+              mvm={live.vm}
+              scheduleChangeDiff={live.scheduleChangeDiff}
+              onDismissScheduleChange={live.dismissScheduleChangeDiff}
+              fetchExplanation={live.fetchExplanation}
+              fetchMobilityInsight={live.fetchMobilityInsight}
               onNavigate={setView}
               onOpenSettings={() => setView("settings")}
+              onOpenCalendar={() => setView("calendar")}
+              onOpenNotifications={() => setView("notifications")}
+              notificationCount={live.notifications.length}
             />
           ))}
 
@@ -155,27 +176,39 @@ function MobileShell() {
 
         {view === "settings" && <SkinSettings />}
 
-        {view === "v2g" &&
+        {view === "calendar" && (
+          <CalendarSettingsScreen
+            calendarEnabled={live.calendarEnabled}
+            onToggle={live.setCalendarEnabled}
+            events={live.calendarEvents}
+          />
+        )}
+
+        {view === "notifications" && (
+          <NotificationsScreen events={live.notifications} />
+        )}
+
+        {view === "v2g" && live.vm &&
           (skin === "epit" ? (
             <EpitV2GSchedule
-              blocks={scheduleBlocks}
-              chargeEnergyKWh={schedule.chargeEnergyKWh}
-              dischargeEnergyKWh={schedule.dischargeEnergyKWh}
-              rewardPoints={schedule.rewardPoints}
+              mvm={live.vm}
+              v2gEnabled={live.v2gEnabled}
+              onToggleV2g={live.setV2gEnabled}
+              onChangeHardMinimumSoc={live.setHardMinimumSoc}
             />
           ) : (
             <MyHyundaiV2GSchedule
-              blocks={scheduleBlocks}
-              chargeEnergyKWh={schedule.chargeEnergyKWh}
-              dischargeEnergyKWh={schedule.dischargeEnergyKWh}
-              rewardPoints={schedule.rewardPoints}
+              mvm={live.vm}
+              v2gEnabled={live.v2gEnabled}
+              onToggleV2g={live.setV2gEnabled}
+              onChangeHardMinimumSoc={live.setHardMinimumSoc}
             />
           ))}
-        {view === "soc" &&
+        {view === "soc" && live.vm &&
           (skin === "epit" ? (
-            <EpitSocSettings vm={vm} />
+            <EpitSocSettings mvm={live.vm} onSave={live.setHardMinimumSoc} />
           ) : (
-            <MyHyundaiSocSettings vm={vm} />
+            <MyHyundaiSocSettings mvm={live.vm} onSave={live.setHardMinimumSoc} />
           ))}
         {view === "stations" &&
           (skin === "epit" ? (
@@ -185,24 +218,24 @@ function MobileShell() {
           ))}
         {view === "rewards" &&
           (skin === "epit" ? (
-            <EpitRewards schedule={schedule} blocks={scheduleBlocks} />
+            <EpitRewards schedule={schedule} />
           ) : (
             <MyHyundaiWallet schedule={schedule} />
           ))}
-        {view === "myVehicle" &&
-          (skin === "myhyundai" ? (
-            <MyHyundaiVehicle vm={vm} />
+        {view === "myVehicle" && live.vm && live.pattern &&
+          (skin === "epit" ? (
+            <EpitVehicle mvm={live.vm} pattern={live.pattern} />
           ) : (
-            <PlaceholderScreen
-              icon={CarFront}
-              title="마이카"
-              description="차량 정보와 이용 내역을 준비 중이에요."
-            />
+            <MyHyundaiVehicle mvm={live.vm} pattern={live.pattern} />
           ))}
 
         <BottomNav
           view={
-            view === "settings" || view === "focus" || view === "pnc"
+            view === "settings" ||
+            view === "focus" ||
+            view === "pnc" ||
+            view === "calendar" ||
+            view === "notifications"
               ? "home"
               : view === "soc"
                 ? "myVehicle"

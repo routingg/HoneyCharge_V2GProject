@@ -1,14 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import type { HomeViewModel } from "@/lib/services/mobileHomeService";
+import type { MobilityHomeViewModel } from "@/lib/services/liveMobilityService";
 
-const SLIDER_MIN = 40;
-const SLIDER_MAX = 80;
+const SLIDER_MIN = 10;
+const SLIDER_MAX = 60;
 
-/** E-pit 컴팩트 카드 문법을 쓴 최소 SOC 설정. */
-export function EpitSocSettings({ vm }: { vm: HomeViewModel }) {
-  const [draftMinimumSoc, setDraftMinimumSoc] = useState(vm.minimumSoc);
+/** E-pit 컴팩트 카드 문법을 쓴 최소 SOC 설정. hardMinimumSoc는 자동 보호 SOC의 절대 하한선이에요. */
+export function EpitSocSettings({
+  mvm,
+  onSave,
+}: {
+  mvm: MobilityHomeViewModel;
+  onSave: (value: number) => void;
+}) {
+  const [draftMinimumSoc, setDraftMinimumSoc] = useState(mvm.hardMinimumSoc);
   const fillPercent =
     ((draftMinimumSoc - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN)) * 100;
 
@@ -17,20 +23,23 @@ export function EpitSocSettings({ vm }: { vm: HomeViewModel }) {
       <div className="epit-v2g-summary">
         <div>
           <span>현재 SOC</span>
-          <strong>{Math.round(vm.soc)}%</strong>
+          <strong>{Math.round(mvm.currentSoc)}%</strong>
         </div>
         <div>
-          <span>최소 보장</span>
-          <strong className="is-accent">{draftMinimumSoc}%</strong>
+          <span>자동 보호 SOC</span>
+          <strong className="is-accent">{Math.round(mvm.guaranteedSoc)}%</strong>
         </div>
         <div>
-          <span>자동 추천</span>
-          <strong>{vm.recommendedMinimumSoc}%</strong>
+          <span>내 최소 설정</span>
+          <strong>{draftMinimumSoc}%</strong>
         </div>
       </div>
 
       <div className="epit-mint-card epit-soc-card">
-        <p>최소 보장 SOC를 조정하면 V2G가 공유할 수 있는 여유 배터리 범위가 바뀌어요.</p>
+        <p>
+          내가 원하는 최소 배터리를 설정하면, HoneyCharge는 계산된 자동 보호 SOC가 이보다
+          낮아지더라도 절대 이 값 아래로 방전하지 않아요.
+        </p>
         <input
           type="range"
           min={SLIDER_MIN}
@@ -41,10 +50,14 @@ export function EpitSocSettings({ vm }: { vm: HomeViewModel }) {
           }
           className="epit-slider"
           style={{ ["--fill" as string]: `${fillPercent}%` }}
-          aria-label="최소 보장 SOC"
+          aria-label="내가 원하는 최소 배터리"
         />
-        <button type="button" className="epit-btn-filled epit-soc-save">
-          {draftMinimumSoc}%로 저장 (DEMO)
+        <button
+          type="button"
+          className="epit-btn-filled epit-soc-save"
+          onClick={() => onSave(draftMinimumSoc)}
+        >
+          {draftMinimumSoc}%로 저장
         </button>
       </div>
     </div>

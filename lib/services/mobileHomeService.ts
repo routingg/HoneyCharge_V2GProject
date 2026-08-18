@@ -7,6 +7,8 @@ import type {
   VehicleSchedule,
 } from "@/lib/types";
 
+export type { VehicleSchedule };
+
 export type VehicleEnergyState =
   | "charging"
   | "discharging"
@@ -61,7 +63,10 @@ export function deriveEnergyState(
   return "standby";
 }
 
-export function estimateRangeKm(vehicle: Vehicle, soc: number): number {
+export function estimateRangeKm(
+  vehicle: Pick<Vehicle, "batteryCapacityKWh">,
+  soc: number,
+): number {
   const usableKWh = (soc / 100) * vehicle.batteryCapacityKWh;
   return Math.round(
     (usableKWh / EV_EFFICIENCY_KWH_PER_100KM) * 100,

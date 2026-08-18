@@ -5,12 +5,12 @@ import type {
 } from "@/lib/services/liveMobilityService";
 
 /**
- * myHyundai의 차량-제어 화면 문법을 재현합니다: 위에서 본 차량,
- * 넉넉한 여백, 아래로 늘어선 상태 행들. 충전 키오스크가 아니라
- * "내 차 상태를 확인하는" 화면처럼 보이는 것이 목표(스펙 §37). 본문은
+ * E-pit 카드 문법의 "마이카" 화면. myHyundai의 차량 상태 화면과 동일한
+ * 기능(배터리·연결·V2G·최소 배터리·주행거리·다음 출발·이동 패턴)을
+ * 제공하되, 디자인은 E-pit의 화이트/민트 카드 언어를 따릅니다. 본문은
  * 두 스킨이 공유합니다(VehicleStatusBody).
  */
-export function MyHyundaiVehicle({
+export function EpitVehicle({
   mvm,
   pattern,
 }: {
@@ -18,9 +18,8 @@ export function MyHyundaiVehicle({
   pattern: MobilityPatternViewModel;
 }) {
   return (
-    <section className="myhv-screen">
-      <h1 className="myhv-title">차량 상태</h1>
+    <div className="epit-v2g">
       <VehicleStatusBody mvm={mvm} pattern={pattern} />
-    </section>
+    </div>
   );
 }

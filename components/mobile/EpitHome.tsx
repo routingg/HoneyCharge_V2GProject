@@ -1,7 +1,17 @@
-import { Bell, Menu, RefreshCw, Zap } from "lucide-react";
+import { Bell, Menu, Zap } from "lucide-react";
+import { MobilityHome } from "@/components/mobile/MobilityHome";
 import { VehicleGlyph } from "@/components/mobile/VehicleGlyph";
+import type { ScheduleChangeDiff } from "@/components/mobile/useLiveMobility";
 import type { MobileView } from "@/components/mobile/MobileApp";
-import type { HomeViewModel } from "@/lib/services/mobileHomeService";
+import type {
+  MobilityContextAnalysis,
+  ScheduleExplanation,
+} from "@/lib/services/ai/types";
+import {
+  deriveDisplayEnergyState,
+  type MobilityHomeViewModel,
+} from "@/lib/services/liveMobilityService";
+import { estimateRangeKm, type HomeViewModel } from "@/lib/services/mobileHomeService";
 
 const badgeLabel: Record<HomeViewModel["energyState"], string> = {
   charging: "충전 중",
@@ -21,29 +31,45 @@ const ctaLabel: Record<HomeViewModel["energyState"], string> = {
 
 /**
  * "HoneyCharge Charge" — E-pit 홈 화면 재현. 상단 45%는 다크 네이비
- * 차량 영역(로고·탭·차량명·차량·SOC·요약 패널), 하단 55%는
- * 화이트/민트 서비스 영역(민트 카드) + 하단 고정 그라디언트 CTA로
- * 나뉩니다. Hero/InfoGrid의 단일 카드 구조와는 완전히 다른 레이아웃.
+ * 차량 영역(로고·탭·차량명·차량·SOC·요약 패널), 하단은 화이트 영역에
+ * 담긴 <MobilityHome/>(보장 SOC 히어로·오늘의 플랜·AI 인사이트)로
+ * 이어집니다. vm(구 그리드 시뮬레이션)은 리워드 포인트와 CTA 라우팅에만
+ * 남아있고, 배터리·출발·V2G 계획은 전부 mvm(실시간 모빌리티 엔진)에서
+ * 옵니다.
  */
 export function EpitHome({
   vm,
+  mvm,
+  scheduleChangeDiff,
+  onDismissScheduleChange,
+  fetchExplanation,
+  fetchMobilityInsight,
   onNavigate,
   onOpenSettings,
   onOpenFocus,
+  onOpenCalendar,
+  onOpenNotifications,
+  notificationCount,
 }: {
   vm: HomeViewModel;
+  mvm: MobilityHomeViewModel;
+  scheduleChangeDiff: ScheduleChangeDiff | null;
+  onDismissScheduleChange: () => void;
+  fetchExplanation: () => Promise<ScheduleExplanation | null>;
+  fetchMobilityInsight: () => Promise<MobilityContextAnalysis | null>;
   onNavigate: (view: MobileView) => void;
   onOpenSettings: () => void;
   onOpenFocus: () => void;
+  onOpenCalendar: () => void;
+  onOpenNotifications: () => void;
+  notificationCount: number;
 }) {
+  const displayState = deriveDisplayEnergyState(mvm);
   const hasFocusScreen =
-    vm.energyState === "charging" ||
-    vm.energyState === "discharging" ||
-    vm.energyState === "soc-protected";
-  const availablePercent = Math.max(
-    0,
-    Math.round(vm.soc - vm.minimumSoc),
-  );
+    displayState === "charging" ||
+    displayState === "discharging" ||
+    displayState === "soc-protected";
+  const rangeKm = estimateRangeKm({ batteryCapacityKWh: mvm.batteryCapacityKWh }, mvm.currentSoc);
 
   return (
     <div className="epit-home">
@@ -53,8 +79,9 @@ export function EpitHome({
             Honey<span>Charge</span>
           </span>
           <div className="epit-header-icons">
-            <button type="button" aria-label="알림">
+            <button type="button" aria-label="알림" onClick={onOpenNotifications} className="hc-bell-btn">
               <Bell size={19} strokeWidth={1.7} />
+              {notificationCount > 0 && <span className="hc-bell-dot" />}
             </button>
             <button
               type="button"
@@ -83,66 +110,48 @@ export function EpitHome({
         </div>
 
         <div className="epit-vehicle-name-row">
-          <strong>{vm.vehicle.model}</strong>
-          <span className={`epit-v2g-badge is-${vm.energyState}`}>
-            V2G · {badgeLabel[vm.energyState]}
+          <strong>{mvm.vehicleModel}</strong>
+          <span className={`epit-v2g-badge is-${displayState}`}>
+            V2G · {badgeLabel[displayState]}
           </span>
         </div>
 
         <div className="epit-vehicle-stage">
-          <VehicleGlyph state={vm.energyState} />
+          <VehicleGlyph state={displayState} />
         </div>
 
         <div className="epit-soc-row">
           <Zap size={17} strokeWidth={2} />
-          <strong>{Math.round(vm.soc)}%</strong>
-          <span className="epit-soc-range">{vm.rangeKm}km</span>
+          <strong>{Math.round(mvm.currentSoc)}%</strong>
+          <span className="epit-soc-range">{rangeKm}km</span>
         </div>
 
         <div className="epit-summary-panel">
           <button type="button" onClick={() => onNavigate("soc")}>
-            <span>최소 SOC</span>
-            <strong>{vm.minimumSoc}%</strong>
+            <span>보호 SOC</span>
+            <strong>{Math.round(mvm.guaranteedSoc)}%</strong>
           </button>
           <div>
             <span>오늘 보상</span>
             <strong className="is-accent">{vm.rewardPoints}P</strong>
           </div>
           <div>
-            <span>사용 가능</span>
-            <strong>{availablePercent}%</strong>
+            <span>V2G 가능</span>
+            <strong>{Math.round(mvm.availablePercent)}%</strong>
           </div>
         </div>
       </div>
 
       <div className="epit-light-zone">
-        <div className="epit-mint-card">
-          <div className="epit-mint-card-head">
-            <span className="epit-mint-badge">HoneyCharge</span>
-            <RefreshCw size={15} />
-          </div>
-          <p>
-            {vm.signalCopy.headline}
-            <br />
-            {vm.signalCopy.detail}
-          </p>
-          <div className="epit-mint-card-actions">
-            <button
-              type="button"
-              className="epit-btn-outline"
-              onClick={() => onNavigate("v2g")}
-            >
-              V2G 상세
-            </button>
-            <button
-              type="button"
-              className="epit-btn-filled"
-              onClick={() => onNavigate("myVehicle")}
-            >
-              스케줄 변경
-            </button>
-          </div>
-        </div>
+        <MobilityHome
+          vm={mvm}
+          scheduleChangeDiff={scheduleChangeDiff}
+          onDismissScheduleChange={onDismissScheduleChange}
+          fetchExplanation={fetchExplanation}
+          fetchMobilityInsight={fetchMobilityInsight}
+          onOpenV2G={() => onNavigate("v2g")}
+          onOpenCalendar={onOpenCalendar}
+        />
 
         <div className="epit-chip-row">
           <span className="epit-chip is-solid">주변 HoneyCharge PASS</span>
@@ -153,12 +162,12 @@ export function EpitHome({
       <div className="epit-fixed-cta">
         <button
           type="button"
-          disabled={vm.energyState === "disconnected"}
+          disabled={displayState === "disconnected"}
           onClick={() =>
             hasFocusScreen ? onOpenFocus() : onNavigate("stations")
           }
         >
-          <Zap size={18} strokeWidth={2} /> {ctaLabel[vm.energyState]}
+          <Zap size={18} strokeWidth={2} /> {ctaLabel[displayState]}
         </button>
       </div>
     </div>

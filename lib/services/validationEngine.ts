@@ -36,6 +36,8 @@ export interface ValidationEngine {
   calendarEvents: NormalizedCalendarEvent[];
   hardMinimumSoc: number;
   preferredReserveSoc: number;
+  /** User-facing "Automatic V2G" switch (mobile V2G screen). */
+  v2gEnabled: boolean;
 }
 
 /**
@@ -70,6 +72,7 @@ export function createValidationEngine(config: EngineConfig): ValidationEngine {
     calendarEvents: [],
     hardMinimumSoc: config.hardMinimumSoc,
     preferredReserveSoc: config.preferredReserveSoc,
+    v2gEnabled: true,
   };
 }
 
@@ -167,6 +170,7 @@ export function computeSnapshot(
     predictedReturn,
     tripEnergyKWh: tripEnergyPrediction.requiredEnergyKWh,
     gridSignals: generateSimulatedGridSignals(now, DEFAULT_SLOT_MINUTES, DEFAULT_HORIZON_SLOTS),
+    v2gEnabled: engine.v2gEnabled,
   });
 
   const availableForV2GSoc = Math.max(0, vehicleState.soc - guaranteedSocResult.guaranteedSoc);

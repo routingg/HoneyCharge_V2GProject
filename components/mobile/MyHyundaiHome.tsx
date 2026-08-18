@@ -1,14 +1,17 @@
-import {
-  Bell,
-  CalendarClock,
-  ChevronRight,
-  Lock,
-  MapPin,
-  Zap,
-} from "lucide-react";
+import { Bell, CalendarClock, Lock, MapPin, Settings, Zap } from "lucide-react";
+import { MobilityHome } from "@/components/mobile/MobilityHome";
 import { VehicleGlyph } from "@/components/mobile/VehicleGlyph";
+import type { ScheduleChangeDiff } from "@/components/mobile/useLiveMobility";
 import type { MobileView } from "@/components/mobile/MobileApp";
-import type { HomeViewModel } from "@/lib/services/mobileHomeService";
+import type {
+  MobilityContextAnalysis,
+  ScheduleExplanation,
+} from "@/lib/services/ai/types";
+import {
+  deriveDisplayEnergyState,
+  type MobilityHomeViewModel,
+} from "@/lib/services/liveMobilityService";
+import { estimateRangeKm, type HomeViewModel } from "@/lib/services/mobileHomeService";
 
 const stateLabel: Record<HomeViewModel["energyState"], string> = {
   charging: "충전 중",
@@ -19,47 +22,76 @@ const stateLabel: Record<HomeViewModel["energyState"], string> = {
 };
 
 /**
- * "HoneyCharge My Car" — myHyundai 홈 재현. 차분한 SOC/주행거리 바(거대
- * 숫자 아님), 화이트 캔버스에 넓은 여백을 둔 큰 차량, 라벨형 퀵액션
- * 4칸, 옅은 그림자의 화이트 카드. E-pit과 정보 밀도·위계가 다릅니다.
+ * "HoneyCharge My Car" — myHyundai 홈 재현. 차량 식별 영역(글리프·SOC바)은
+ * 그대로 두되, 아래 이어지는 <MobilityHome/>이 보장 SOC·오늘의 플랜·AI
+ * 인사이트를 담당합니다.
  */
 export function MyHyundaiHome({
   vm,
+  mvm,
+  scheduleChangeDiff,
+  onDismissScheduleChange,
+  fetchExplanation,
+  fetchMobilityInsight,
   onNavigate,
   onOpenSettings,
+  onOpenCalendar,
+  onOpenNotifications,
+  notificationCount,
 }: {
   vm: HomeViewModel;
+  mvm: MobilityHomeViewModel;
+  scheduleChangeDiff: ScheduleChangeDiff | null;
+  onDismissScheduleChange: () => void;
+  fetchExplanation: () => Promise<ScheduleExplanation | null>;
+  fetchMobilityInsight: () => Promise<MobilityContextAnalysis | null>;
   onNavigate: (view: MobileView) => void;
   onOpenSettings: () => void;
+  onOpenCalendar: () => void;
+  onOpenNotifications: () => void;
+  notificationCount: number;
 }) {
-  const socRatio = Math.max(0, Math.min(1, vm.soc / 100));
+  const displayState = deriveDisplayEnergyState(mvm);
+  const socRatio = Math.max(0, Math.min(1, mvm.currentSoc / 100));
+  const rangeKm = estimateRangeKm({ batteryCapacityKWh: mvm.batteryCapacityKWh }, mvm.currentSoc);
   const powerLine =
-    vm.energyState === "charging"
-      ? `${vm.powerKw.toFixed(1)} kW`
-      : vm.energyState === "discharging"
-        ? `-${vm.powerKw.toFixed(1)} kW`
+    displayState === "charging"
+      ? `충전 중`
+      : displayState === "discharging"
+        ? `V2G 공유 중`
         : null;
 
   return (
     <>
       <div className="myh-topbar">
         <span className="myh-brand">HoneyCharge</span>
-        <button
-          type="button"
-          className="myh-icon-btn"
-          aria-label="화면 스타일 설정"
-          onClick={onOpenSettings}
-        >
-          <Bell size={18} />
-        </button>
+        <span className="myh-icon-group">
+          <button
+            type="button"
+            className="myh-icon-btn hc-bell-btn"
+            aria-label="알림"
+            onClick={onOpenNotifications}
+          >
+            <Bell size={18} />
+            {notificationCount > 0 && <span className="hc-bell-dot" />}
+          </button>
+          <button
+            type="button"
+            className="myh-icon-btn"
+            aria-label="화면 스타일 설정"
+            onClick={onOpenSettings}
+          >
+            <Settings size={18} />
+          </button>
+        </span>
       </div>
 
-      <h1 className="myh-title">내 {vm.vehicle.model}</h1>
+      <h1 className="myh-title">내 {mvm.vehicleModel}</h1>
 
       <div className="myh-soc-row">
         <div>
-          <strong>{Math.round(vm.soc)}%</strong>
-          <span>{vm.rangeKm} km</span>
+          <strong>{Math.round(mvm.currentSoc)}%</strong>
+          <span>{rangeKm} km</span>
         </div>
         <div className="myh-soc-bar">
           <i style={{ width: `${socRatio * 100}%` }} />
@@ -67,7 +99,7 @@ export function MyHyundaiHome({
       </div>
 
       <div className="myh-vehicle-stage">
-        <VehicleGlyph state={vm.energyState} />
+        <VehicleGlyph state={displayState} />
       </div>
       <div className="myh-stage-dots" aria-hidden="true">
         <span className="is-active" />
@@ -76,14 +108,14 @@ export function MyHyundaiHome({
       </div>
 
       <p className="myh-state-line">
-        <span className={`myh-state-dot is-${vm.energyState}`} />
-        {vm.energyState === "soc-protected" && (
+        <span className={`myh-state-dot is-${displayState}`} />
+        {displayState === "soc-protected" && (
           <Lock size={13} className="myh-lock-icon" />
         )}
-        {stateLabel[vm.energyState]}
+        {stateLabel[displayState]}
         {powerLine && <span className="myh-power">· {powerLine}</span>}
       </p>
-      <p className="myh-sub-line">최소 보장 SOC {vm.minimumSoc}%</p>
+      <p className="myh-sub-line">보호 SOC {Math.round(mvm.guaranteedSoc)}%</p>
 
       <div className="myh-quick-actions">
         <button type="button" onClick={() => onNavigate("v2g")}>
@@ -98,11 +130,11 @@ export function MyHyundaiHome({
           </span>
           <span>SOC</span>
         </button>
-        <button type="button" onClick={() => onNavigate("v2g")}>
+        <button type="button" onClick={onOpenCalendar}>
           <span className="myh-quick-icon">
             <CalendarClock size={20} strokeWidth={1.6} />
           </span>
-          <span>스케줄</span>
+          <span>캘린더</span>
         </button>
         <button type="button" onClick={() => onNavigate("stations")}>
           <span className="myh-quick-icon">
@@ -111,6 +143,16 @@ export function MyHyundaiHome({
           <span>충전소</span>
         </button>
       </div>
+
+      <MobilityHome
+        vm={mvm}
+        scheduleChangeDiff={scheduleChangeDiff}
+        onDismissScheduleChange={onDismissScheduleChange}
+        fetchExplanation={fetchExplanation}
+        fetchMobilityInsight={fetchMobilityInsight}
+        onOpenV2G={() => onNavigate("v2g")}
+        onOpenCalendar={onOpenCalendar}
+      />
 
       <button
         type="button"
@@ -123,24 +165,13 @@ export function MyHyundaiHome({
           </span>
           오늘의 HoneyCharge
         </span>
-        <strong className="myh-card-headline">{vm.signalCopy.headline}</strong>
+        <strong className="myh-card-headline">오늘 예상 보상</strong>
         <span className="myh-card-detail">
-          {vm.energyState === "charging" &&
-            `${vm.powerKw.toFixed(1)} kW로 ${vm.signalCopy.detail}`}
-          {vm.energyState === "discharging" &&
-            `여유 전력 -${vm.powerKw.toFixed(1)} kW 공유 중`}
-          {vm.energyState !== "charging" &&
-            vm.energyState !== "discharging" &&
-            (vm.v2gWindow
-              ? `오늘 ${vm.v2gWindow.startTime}부터 전력 공유 예정`
-              : vm.signalCopy.detail)}
+          이번 주 참여 내역과 쿠폰은 HoneyWallet에서 확인하세요.
         </span>
         <span className="myh-card-footer">
           <span>
             오늘 예상 보상 <strong>+{vm.rewardPoints} P</strong>
-          </span>
-          <span className="myh-card-link">
-            자세히 보기 <ChevronRight size={14} />
           </span>
         </span>
       </button>

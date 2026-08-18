@@ -2,15 +2,21 @@
 
 import { useState } from "react";
 import { VehicleGlyph } from "@/components/mobile/VehicleGlyph";
-import type { HomeViewModel } from "@/lib/services/mobileHomeService";
+import { deriveDisplayEnergyState, type MobilityHomeViewModel } from "@/lib/services/liveMobilityService";
 
-const SLIDER_MIN = 40;
-const SLIDER_MAX = 80;
-const SLIDER_TICKS = [40, 50, 60, 70, 80];
+const SLIDER_MIN = 10;
+const SLIDER_MAX = 60;
+const SLIDER_TICKS = [10, 20, 35, 50, 60];
 
-/** myHyundai의 차량-제어 슬라이더 문법을 재현한 배터리 안심 설정(스펙 §35~36). */
-export function MyHyundaiSocSettings({ vm }: { vm: HomeViewModel }) {
-  const [draftMinimumSoc, setDraftMinimumSoc] = useState(vm.minimumSoc);
+/** myHyundai의 차량-제어 슬라이더 문법을 재현한 배터리 안심 설정. hardMinimumSoc는 절대 하한선이에요. */
+export function MyHyundaiSocSettings({
+  mvm,
+  onSave,
+}: {
+  mvm: MobilityHomeViewModel;
+  onSave: (value: number) => void;
+}) {
+  const [draftMinimumSoc, setDraftMinimumSoc] = useState(mvm.hardMinimumSoc);
   const fillPercent =
     ((draftMinimumSoc - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN)) * 100;
 
@@ -19,21 +25,21 @@ export function MyHyundaiSocSettings({ vm }: { vm: HomeViewModel }) {
       <h1 className="myhv-title">배터리 안심 설정</h1>
 
       <div className="myhv-stage myhv-soc-stage">
-        <VehicleGlyph state={vm.energyState} />
+        <VehicleGlyph state={deriveDisplayEnergyState(mvm)} />
       </div>
 
       <dl className="myhv-rows myhv-soc-rows">
         <div>
           <dt>현재 SOC</dt>
-          <dd>{Math.round(vm.soc)}%</dd>
+          <dd>{Math.round(mvm.currentSoc)}%</dd>
         </div>
         <div>
-          <dt>최소 보장</dt>
+          <dt>자동 보호 SOC</dt>
+          <dd>{Math.round(mvm.guaranteedSoc)}%</dd>
+        </div>
+        <div>
+          <dt>내 최소 설정</dt>
           <dd>{draftMinimumSoc}%</dd>
-        </div>
-        <div>
-          <dt>자동 추천</dt>
-          <dd>{vm.recommendedMinimumSoc}%</dd>
         </div>
       </dl>
 
@@ -48,7 +54,7 @@ export function MyHyundaiSocSettings({ vm }: { vm: HomeViewModel }) {
           }
           className="myh-slider"
           style={{ ["--fill" as string]: `${fillPercent}%` }}
-          aria-label="최소 보장 SOC"
+          aria-label="내가 원하는 최소 배터리"
         />
         <div className="myh-slider-ticks">
           {SLIDER_TICKS.map((tick) => (
@@ -57,8 +63,8 @@ export function MyHyundaiSocSettings({ vm }: { vm: HomeViewModel }) {
         </div>
       </div>
 
-      <button type="button" className="myh-blue-cta">
-        최소 SOC {draftMinimumSoc}%로 저장 (DEMO)
+      <button type="button" className="myh-blue-cta" onClick={() => onSave(draftMinimumSoc)}>
+        최소 배터리 {draftMinimumSoc}%로 저장
       </button>
     </section>
   );

@@ -633,6 +633,11 @@
   letter-spacing: -.01em;
   color: var(--myh-blue);
 }
+.myh-icon-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 .myh-icon-btn {
   display: grid;
   place-items: center;
@@ -891,6 +896,67 @@
   font-size: 15px;
   font-weight: 700;
 }
+
+/* ==================================================================== */
+/* Vehicle status body (battery/connection/V2G/pattern), shared by both  */
+/* skins via VehicleStatusBody.tsx. EpitVehicle.tsx wraps this in the    */
+/* same epit-v2g page chrome the other E-pit secondary screens use;      */
+/* MyHyundaiVehicle.tsx wraps it in myhv-screen. Only the accent color   */
+/* here varies by [data-skin] — the light gradient stage itself is       */
+/* intentionally neutral so the vehicle glyph reads the same everywhere. */
+/* ==================================================================== */
+.hc-vehicle-status-stage {
+  position: relative;
+  width: 100%;
+  margin: 4px 0 8px;
+  padding: 30px 16px 14px;
+  border-radius: 24px;
+  background: radial-gradient(
+    120% 100% at 50% 0%,
+    #eef2f6 0%,
+    #f6f8fa 55%,
+    #ffffff 100%
+  );
+  overflow: hidden;
+}
+.hc-vehicle-status-stage .vehicle-glyph {
+  width: 84%;
+  max-width: 300px;
+  margin: 0 auto;
+  display: block;
+  color: #aab0ba;
+  filter: drop-shadow(0 18px 16px rgba(16, 40, 70, .16));
+}
+.hc-vehicle-status-stage .glyph-body { fill: #f4f5f7; }
+.hc-vehicle-status-stage .glyph-glass { fill: #d3d7dc; }
+.hc-vehicle-status-stage .glyph-wheel { fill: #171d27; stroke: #454c58; }
+.hc-vehicle-status-stage .glyph-shadow { fill: rgba(16, 40, 70, .12); }
+
+.hc-vehicle-status-rows {
+  margin: 0;
+  border-top: 1px solid var(--epit-border, #e5e7e9);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-vehicle-status-rows { border-color: var(--myh-border); }
+.hc-vehicle-status-rows > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 2px;
+  border-bottom: 1px solid var(--epit-border, #e5e7e9);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-vehicle-status-rows > div { border-color: var(--myh-border); }
+.hc-vehicle-status-rows dt {
+  font-size: 14px;
+  color: var(--epit-text-secondary, #656b73);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-vehicle-status-rows dt { color: var(--myh-text-secondary); }
+.hc-vehicle-status-rows dd {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--epit-text, #17191b);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-vehicle-status-rows dd { color: var(--myh-text); }
 
 /* ==================================================================== */
 /* Shared secondary screens                                              */
@@ -1510,7 +1576,13 @@
 /* ==================================================================== */
 /* myHyundai — HoneyWallet & Energy Insight                              */
 /* ==================================================================== */
-.myh-wallet-balance {
+/* ==================================================================== */
+/* Wallet body (HoneyWallet + coupons + Energy Insight), shared by both  */
+/* skins via WalletBody.tsx. Default styling below is E-pit-flavored     */
+/* (dark/mint accent); [data-skin="myhyundai"] overrides restyle it to   */
+/* the original white/navy myHyundai look.                               */
+/* ==================================================================== */
+.hc-wallet-balance {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1518,23 +1590,27 @@
   padding: 0 18px;
   margin: 18px 0 0;
   border-radius: 12px;
-  background: var(--myh-blue, #002c5f);
+  background: var(--epit-dark, #222733);
   color: #fff;
 }
-.myh-wallet-balance span { font-size: 12.5px; opacity: .8; }
-.myh-wallet-balance strong { font-size: 18px; font-weight: 700; }
+.hc-wallet-balance span { font-size: 12.5px; opacity: .8; }
+.hc-wallet-balance strong { font-size: 18px; font-weight: 700; color: var(--epit-mint, #a5efe6); }
+.hc-mobile[data-skin="myhyundai"] .hc-wallet-balance {
+  background: var(--myh-blue, #002c5f);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-wallet-balance strong { color: #fff; }
 
-.myh-wallet-actions {
+.hc-wallet-actions {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin: 12px 0 0;
 }
-.myh-wallet-actions button {
+.hc-wallet-actions button {
   height: 40px;
   border-radius: 10px;
-  background: var(--myh-blue-soft, #eaf1f7);
-  color: var(--myh-blue, #002c5f);
+  background: var(--epit-mint-soft, #ddf8f5);
+  color: var(--epit-primary-dark, #18b8aa);
   font-size: 12px;
   font-weight: 700;
   display: flex;
@@ -1542,80 +1618,107 @@
   justify-content: center;
   text-align: center;
 }
+.hc-mobile[data-skin="myhyundai"] .hc-wallet-actions button {
+  background: var(--myh-blue-soft, #eaf1f7);
+  color: var(--myh-blue, #002c5f);
+}
 
-.myhv-section-title {
+.hc-wallet-section-title {
   margin: 26px 0 10px;
   font-size: 14px;
   font-weight: 700;
+  color: var(--epit-text, #17191b);
 }
+.hc-mobile[data-skin="myhyundai"] .hc-wallet-section-title { color: var(--myh-text); }
 
-.myh-coupon-list {
+.hc-coupon-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-.myh-coupon-list li {
+.hc-coupon-list li {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 14px;
   border-radius: 14px;
-  background: var(--myh-card, #fff);
-  border: 1px solid var(--myh-border, #e5e9ed);
+  background: var(--epit-white, #fff);
+  border: 1px solid var(--epit-border, #e5e7e9);
 }
-.myh-coupon-list li.is-used { opacity: .5; }
-.myh-coupon-qr {
+.hc-mobile[data-skin="myhyundai"] .hc-coupon-list li {
+  border-radius: 14px;
+  background: var(--myh-card, #fff);
+  border-color: var(--myh-border, #e5e9ed);
+}
+.hc-coupon-list li.is-used { opacity: .5; }
+.hc-coupon-qr {
   display: grid;
   place-items: center;
   width: 44px;
   height: 44px;
   flex-shrink: 0;
   border-radius: 8px;
+  background: var(--epit-mint-soft, #ddf8f5);
+  color: var(--epit-primary-dark, #18b8aa);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-coupon-qr {
   background: var(--myh-blue-soft, #eaf1f7);
   color: var(--myh-blue, #002c5f);
 }
-.myh-coupon-copy {
+.hc-coupon-copy {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 1px;
 }
-.myh-coupon-copy strong { font-size: 13.5px; font-weight: 700; }
-.myh-coupon-copy span { font-size: 12px; color: var(--myh-text-secondary, #68737e); }
-.myh-coupon-copy span.myh-coupon-cost {
+.hc-coupon-copy strong { font-size: 13.5px; font-weight: 700; color: var(--epit-text, #17191b); }
+.hc-mobile[data-skin="myhyundai"] .hc-coupon-copy strong { color: var(--myh-text); }
+.hc-coupon-copy span { font-size: 12px; color: var(--epit-text-secondary, #656b73); }
+.hc-mobile[data-skin="myhyundai"] .hc-coupon-copy span { color: var(--myh-text-secondary); }
+.hc-coupon-copy span.hc-coupon-cost {
   color: var(--honey-yellow);
   font-weight: 600;
 }
-.myh-coupon-badge {
+.hc-coupon-badge {
   flex-shrink: 0;
   padding: 4px 9px;
   border-radius: 999px;
   font-size: 10.5px;
   font-weight: 700;
+  background: var(--epit-mint-soft, #ddf8f5);
+  color: var(--epit-primary-dark, #18b8aa);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-coupon-badge {
   background: var(--myh-blue-soft, #eaf1f7);
   color: var(--myh-blue, #002c5f);
 }
 
-.myh-insight-switcher {
+.hc-insight-switcher {
   display: inline-flex;
   gap: 2px;
   padding: 2px;
   border-radius: 999px;
-  background: var(--myh-blue-soft, #eaf1f7);
+  background: var(--epit-mint-soft, #ddf8f5);
 }
-.myh-insight-switcher button {
+.hc-insight-switcher button {
   padding: 6px 14px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--myh-blue, #002c5f);
+  color: var(--epit-primary-dark, #18b8aa);
 }
-.myh-insight-switcher button.is-active {
+.hc-insight-switcher button.is-active {
+  background: var(--epit-primary-dark, #18b8aa);
+  color: #fff;
+}
+.hc-mobile[data-skin="myhyundai"] .hc-insight-switcher { background: var(--myh-blue-soft, #eaf1f7); }
+.hc-mobile[data-skin="myhyundai"] .hc-insight-switcher button { color: var(--myh-blue, #002c5f); }
+.hc-mobile[data-skin="myhyundai"] .hc-insight-switcher button.is-active {
   background: var(--myh-blue, #002c5f);
   color: #fff;
 }
 
-.myh-insight-chart {
+.hc-insight-chart {
   display: flex;
   align-items: flex-end;
   gap: 10px;
@@ -1623,7 +1726,7 @@
   margin: 18px 0 4px;
   padding: 0 4px;
 }
-.myh-insight-bar {
+.hc-insight-bar {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -1632,17 +1735,22 @@
   gap: 6px;
   height: 100%;
 }
-.myh-insight-bar-fill {
+.hc-insight-bar-fill {
   width: 100%;
   max-width: 26px;
   border-radius: 6px 6px 2px 2px;
-  background: var(--myh-border, #e5e9ed);
+  background: var(--epit-border, #e5e7e9);
 }
-.myh-insight-bar:nth-child(4) .myh-insight-bar-fill {
+.hc-insight-bar:nth-child(4) .hc-insight-bar-fill {
+  background: var(--epit-primary-dark, #18b8aa);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-insight-bar-fill { background: var(--myh-border, #e5e9ed); }
+.hc-mobile[data-skin="myhyundai"] .hc-insight-bar:nth-child(4) .hc-insight-bar-fill {
   background: var(--myh-blue, #002c5f);
 }
-.myh-insight-bar small { font-size: 10.5px; color: var(--myh-text-secondary, #68737e); }
-.myh-insight-note { padding: 0; text-align: left; }
+.hc-insight-bar small { font-size: 10.5px; color: var(--epit-text-secondary, #656b73); }
+.hc-mobile[data-skin="myhyundai"] .hc-insight-bar small { color: var(--myh-text-secondary); }
+.hc-wallet-empty { padding: 0; text-align: left; font-size: 12px; color: var(--epit-text-disabled, #989da4); }
 
 /* ==================================================================== */
 /* E-pit — PnC (Plug & Charge) simulated connection flow                 */
@@ -1759,3 +1867,776 @@
   .epit-focus-soc strong { font-size: 64px; }
   .myh-soc-row strong { font-size: 28px; }
 }
+
+/* ==================================================================== */
+/* Mobility-aware home (guaranteed SOC, today's plan, AI insight).       */
+/* Shared structure across both skins; only accent colors and card       */
+/* radii vary by [data-skin], reusing each skin's existing token set     */
+/* rather than inventing a third visual language.                       */
+/* ==================================================================== */
+.hc-mobility-home {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.hc-bell-btn { position: relative; }
+.hc-bell-dot {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #f0574a;
+  border: 1.5px solid var(--epit-dark, #222733);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-bell-dot {
+  border-color: var(--myh-card, #fff);
+}
+
+/* ---- schedule-changed banner ---- */
+.hc-schedule-change-banner {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #fff7e6;
+  border: 1px solid #f2d78b;
+}
+.hc-schedule-change-title {
+  margin: 0 0 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #8a5a00;
+}
+.hc-schedule-change-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.hc-schedule-change-rows div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: #6b5a2e;
+}
+.hc-schedule-change-rows strong { color: #17191b; font-weight: 700; }
+.hc-schedule-change-note {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  color: #8a7844;
+}
+.hc-schedule-change-dismiss {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #17191b;
+  color: #fff;
+}
+
+/* ---- SOC hero ---- */
+.hc-soc-hero {
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--epit-white, #fff);
+  border: 1px solid var(--epit-border, #e5e7e9);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-soc-hero {
+  border-radius: 20px;
+  border-color: var(--myh-border);
+  box-shadow: 0 8px 20px rgba(0, 44, 95, .06);
+}
+.hc-soc-hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 0 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--epit-text-secondary, #656b73);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-soc-hero-eyebrow { color: var(--myh-text-secondary); }
+.hc-soc-hero-headline {
+  margin: 0 0 14px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--epit-text, #17191b);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-soc-hero-headline { color: var(--myh-text); }
+
+.hc-soc-bar {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--epit-background, #f5f6f7);
+  overflow: hidden;
+}
+.hc-mobile[data-skin="myhyundai"] .hc-soc-bar { background: var(--myh-blue-soft); }
+.hc-soc-bar-protected {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  background: var(--epit-text-secondary, #97a0a8);
+  border-radius: 999px;
+}
+.hc-mobile[data-skin="myhyundai"] .hc-soc-bar-protected { background: var(--myh-blue-light); }
+.hc-soc-bar-available {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--epit-primary, #27c9b8);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-soc-bar-available { background: #3fb15a; }
+
+.hc-soc-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+.hc-soc-legend > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--epit-text-secondary, #656b73);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-soc-legend > div { color: var(--myh-text-secondary); }
+.hc-soc-legend strong {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--epit-text, #17191b);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-soc-legend strong { color: var(--myh-text); }
+.hc-soc-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.hc-soc-dot.is-total { background: var(--epit-background, #e5e7e9); border: 1px solid var(--epit-border, #d8dbde); }
+.hc-soc-dot.is-protected { background: var(--epit-text-secondary, #97a0a8); }
+.hc-soc-dot.is-available { background: var(--epit-primary, #27c9b8); }
+.hc-mobile[data-skin="myhyundai"] .hc-soc-dot.is-protected { background: var(--myh-blue-light); }
+.hc-mobile[data-skin="myhyundai"] .hc-soc-dot.is-available { background: #3fb15a; }
+
+/* ---- "why this plan?" disclosure (shared by hero) ---- */
+.hc-why-disclosure { margin-top: 14px; border-top: 1px solid var(--epit-border, #e5e7e9); padding-top: 10px; }
+.hc-mobile[data-skin="myhyundai"] .hc-why-disclosure { border-color: var(--myh-border); }
+.hc-why-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--epit-text, #17191b);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-why-toggle { color: var(--myh-text); }
+.hc-why-toggle svg { transition: transform .2s ease; color: var(--epit-text-secondary, #97a0a8); }
+.hc-why-toggle svg.is-open { transform: rotate(180deg); }
+.hc-why-body { margin-top: 10px; }
+.hc-why-headline {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--epit-text, #17191b);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-why-headline { color: var(--myh-text); }
+.hc-why-detail {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--epit-text-secondary, #656b73);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-why-detail { color: var(--myh-text-secondary); }
+.hc-why-loading { margin: 0; font-size: 12px; color: var(--epit-text-disabled, #989da4); }
+.hc-why-source {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--epit-primary-dark, #18b8aa);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-why-source { color: var(--myh-blue-light); }
+
+/* ---- today's plan ---- */
+.hc-plan-card {
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--epit-white, #fff);
+  border: 1px solid var(--epit-border, #e5e7e9);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-plan-card {
+  border-radius: 20px;
+  border-color: var(--myh-border);
+  box-shadow: 0 8px 20px rgba(0, 44, 95, .06);
+}
+.hc-plan-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--epit-text-secondary, #656b73);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-plan-head { color: var(--myh-text-secondary); }
+.hc-plan-head strong { color: var(--epit-text, #17191b); }
+.hc-mobile[data-skin="myhyundai"] .hc-plan-head strong { color: var(--myh-text); }
+.hc-plan-link {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--epit-primary-dark, #18b8aa);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-plan-link { color: var(--myh-blue-light); }
+
+.hc-plan-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hc-plan-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 6px;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+.hc-plan-row-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background: var(--epit-background, #f5f6f7);
+  color: var(--epit-text-secondary, #656b73);
+}
+.hc-plan-row.is-charge .hc-plan-row-icon { background: var(--epit-mint-soft, #ddf8f5); color: var(--epit-primary-dark, #18b8aa); }
+.hc-plan-row.is-discharge .hc-plan-row-icon { background: #fff1e0; color: #c07a1c; }
+.hc-plan-row.is-drive .hc-plan-row-icon { background: #eef0ff; color: #5a5fd6; }
+.hc-plan-row-time { color: var(--epit-text-secondary, #97a0a8); font-variant-numeric: tabular-nums; min-width: 76px; }
+.hc-plan-row-label { flex: 1; color: var(--epit-text, #17191b); font-weight: 600; }
+.hc-plan-row-energy { color: var(--epit-text, #17191b); font-variant-numeric: tabular-nums; }
+.hc-mobile[data-skin="myhyundai"] .hc-plan-row-time { color: var(--myh-text-secondary); }
+.hc-mobile[data-skin="myhyundai"] .hc-plan-row-label,
+.hc-mobile[data-skin="myhyundai"] .hc-plan-row-energy { color: var(--myh-text); }
+
+/* ---- AI mobility insight ---- */
+.hc-ai-card {
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--epit-dark, #222733);
+  color: #fff;
+}
+.hc-mobile[data-skin="myhyundai"] .hc-ai-card {
+  border-radius: 20px;
+  background: var(--myh-blue);
+}
+.hc-ai-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.hc-ai-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--epit-mint, #a5efe6);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-ai-badge { color: #9fd0ff; }
+.hc-ai-confidence {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .12);
+}
+.hc-ai-departure { margin: 0 0 10px; font-size: 15px; font-weight: 600; }
+.hc-ai-departure strong { font-size: 18px; }
+
+.hc-ai-source-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+.hc-ai-source-list li {
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  background: rgba(255, 255, 255, .06);
+  color: rgba(255, 255, 255, .45);
+}
+.hc-ai-source-list li.is-active {
+  background: rgba(165, 239, 230, .16);
+  color: var(--epit-mint, #a5efe6);
+  font-weight: 600;
+}
+.hc-mobile[data-skin="myhyundai"] .hc-ai-source-list li.is-active { background: rgba(159, 208, 255, .18); color: #9fd0ff; }
+
+.hc-ai-detail-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, .12);
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, .85);
+}
+.hc-ai-detail-toggle svg { transition: transform .2s ease; }
+.hc-ai-detail-toggle svg.is-open { transform: rotate(180deg); }
+.hc-ai-detail-body { margin-top: 10px; }
+.hc-ai-detail-line { margin: 0 0 6px; font-size: 12.5px; color: rgba(255, 255, 255, .85); }
+.hc-ai-notes {
+  margin: 0 0 8px;
+  padding-left: 16px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, .65);
+}
+.hc-ai-calendar-link {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--epit-mint, #a5efe6);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-ai-calendar-link { color: #9fd0ff; }
+
+/* ---- generic subpage (calendar / notifications) ---- */
+.hc-subpage {
+  padding: 18px 20px 100px;
+  color: var(--epit-text, #17191b);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-subpage { color: var(--myh-text); }
+.hc-subpage h1 { margin: 4px 0 6px; font-size: 19px; font-weight: 700; }
+.hc-subpage-hint {
+  margin: 0 0 16px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--epit-text-secondary, #656b73);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-subpage-hint { color: var(--myh-text-secondary); }
+.hc-subpage-empty { font-size: 12.5px; color: var(--epit-text-disabled, #989da4); }
+.hc-subpage-section-title {
+  margin: 20px 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--epit-text-secondary, #656b73);
+}
+
+.hc-notification-list { display: flex; flex-direction: column; gap: 10px; padding: 0; list-style: none; }
+.hc-notification-list li {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--epit-white, #fff);
+  border: 1px solid var(--epit-border, #e5e7e9);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-notification-list li { border-color: var(--myh-border); }
+.hc-notification-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--epit-mint-soft, #ddf8f5);
+  color: var(--epit-primary-dark, #18b8aa);
+}
+.hc-notification-copy { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
+.hc-notification-copy strong { font-size: 13px; }
+.hc-notification-copy time { font-size: 10.5px; color: var(--epit-text-disabled, #989da4); margin-top: 2px; }
+
+.hc-calendar-card {
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--epit-white, #fff);
+  border: 1px solid var(--epit-border, #e5e7e9);
+  margin-bottom: 8px;
+}
+.hc-calendar-card-head { display: flex; align-items: center; gap: 10px; }
+.hc-calendar-card-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--epit-mint-soft, #ddf8f5);
+  color: var(--epit-primary-dark, #18b8aa);
+  flex-shrink: 0;
+}
+.hc-calendar-card-head > div { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.hc-calendar-status { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; }
+.hc-calendar-status.is-connected { color: #2a9d63; }
+.hc-calendar-status.is-off { color: var(--epit-text-disabled, #989da4); }
+.hc-calendar-toggle {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--epit-background, #f5f6f7);
+  color: var(--epit-text, #17191b);
+  white-space: nowrap;
+}
+.hc-calendar-note { margin: 10px 0 0; font-size: 11px; line-height: 1.5; color: var(--epit-text-secondary, #656b73); }
+.hc-calendar-event-list { display: flex; flex-direction: column; gap: 6px; padding: 0; list-style: none; }
+.hc-calendar-event-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--epit-white, #fff);
+  border: 1px solid var(--epit-border, #e5e7e9);
+  font-size: 12px;
+}
+
+@media (max-width: 360px) {
+  .hc-soc-hero, .hc-plan-card, .hc-ai-card { padding: 13px; }
+}
+
+/* ==================================================================== */
+/* Mobile V2G screen body (shared by both skins via V2GPlanBody).        */
+/* ==================================================================== */
+.hc-v2g-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 0 24px;
+}
+
+.hc-v2g-status-card,
+.hc-v2g-toggle-card,
+.hc-v2g-timeline-card,
+.hc-v2g-reserve-card {
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--epit-white, #fff);
+  border: 1px solid var(--epit-border, #e5e7e9);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-status-card,
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-toggle-card,
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-timeline-card,
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-reserve-card {
+  border-radius: 20px;
+  border-color: var(--myh-border);
+  box-shadow: 0 8px 20px rgba(0, 44, 95, .05);
+}
+
+.hc-v2g-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.hc-v2g-status-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--epit-background, #f5f6f7);
+  color: var(--epit-text, #17191b);
+}
+.hc-v2g-status-badge.is-discharge { background: var(--epit-mint-soft, #ddf8f5); color: var(--epit-primary-dark, #18b8aa); }
+.hc-v2g-status-badge.is-charge { background: #fff1e0; color: #c07a1c; }
+.hc-v2g-safety-badge {
+  font-size: 10.5px;
+  color: var(--epit-text-secondary, #656b73);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-safety-badge { color: var(--myh-text-secondary); }
+.hc-v2g-status-explanation {
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--epit-text-secondary, #656b73);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-status-explanation { color: var(--myh-text-secondary); }
+
+.hc-v2g-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--epit-border, #e5e7e9);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-stats-grid { border-color: var(--myh-border); }
+.hc-v2g-stats-grid + .hc-v2g-stats-grid { border-top: none; padding-top: 4px; }
+.hc-v2g-stats-grid > div { display: flex; flex-direction: column; gap: 3px; }
+.hc-v2g-stats-grid span { font-size: 10.5px; color: var(--epit-text-secondary, #656b73); }
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-stats-grid span { color: var(--myh-text-secondary); }
+.hc-v2g-stats-grid strong { font-size: 13.5px; font-weight: 700; color: var(--epit-text, #17191b); }
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-stats-grid strong { color: var(--myh-text); }
+
+.hc-v2g-toggle-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.hc-v2g-toggle-card > div { display: flex; flex-direction: column; gap: 2px; }
+.hc-v2g-toggle-card strong { font-size: 13.5px; color: var(--epit-text, #17191b); }
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-toggle-card strong { color: var(--myh-text); }
+.hc-v2g-toggle-card span { font-size: 11px; color: var(--epit-text-secondary, #656b73); }
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-toggle-card span { color: var(--myh-text-secondary); }
+
+.hc-toggle-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--epit-border, #e5e7e9);
+  transition: background .2s ease;
+}
+.hc-toggle-switch.is-on { background: var(--epit-primary, #27c9b8); }
+.hc-mobile[data-skin="myhyundai"] .hc-toggle-switch.is-on { background: var(--myh-blue); }
+.hc-toggle-switch span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+  transition: transform .2s ease;
+}
+.hc-toggle-switch.is-on span { transform: translateX(18px); }
+
+.hc-v2g-timeline-title {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--epit-text-secondary, #656b73);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-timeline-title { color: var(--myh-text-secondary); }
+.hc-v2g-timeline-strip {
+  display: flex;
+  width: 100%;
+  height: 34px;
+  border-radius: 8px;
+  overflow: hidden;
+  gap: 1px;
+}
+.hc-v2g-timeline-seg {
+  min-width: 3px;
+  height: 100%;
+  background: var(--epit-background, #e5e7e9);
+  opacity: .55;
+  transition: opacity .15s ease, transform .15s ease;
+}
+.hc-v2g-timeline-seg.is-charge { background: var(--epit-primary-dark, #18b8aa); }
+.hc-v2g-timeline-seg.is-discharge { background: #d9893b; }
+.hc-v2g-timeline-seg.is-idle { background: var(--epit-text-disabled, #c7cbcf); }
+.hc-v2g-timeline-seg.is-drive { background: #5a5fd6; }
+.hc-v2g-timeline-seg.is-selected,
+.hc-v2g-timeline-seg:hover { opacity: 1; transform: scaleY(1.08); }
+
+.hc-v2g-timeline-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--epit-text-disabled, #989da4);
+}
+.hc-v2g-timeline-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 10.5px;
+  color: var(--epit-text-secondary, #656b73);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-timeline-legend { color: var(--myh-text-secondary); }
+.hc-v2g-timeline-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.hc-v2g-timeline-legend i { width: 8px; height: 8px; border-radius: 999px; display: inline-block; }
+.hc-v2g-timeline-legend .is-charge i { background: var(--epit-primary-dark, #18b8aa); }
+.hc-v2g-timeline-legend .is-discharge i { background: #d9893b; }
+.hc-v2g-timeline-legend .is-idle i { background: var(--epit-text-disabled, #c7cbcf); }
+.hc-v2g-timeline-legend .is-drive i { background: #5a5fd6; }
+
+.hc-v2g-detail {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--epit-background, #f5f6f7);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-detail { background: var(--myh-blue-soft); }
+.hc-v2g-detail-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.hc-v2g-detail-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--epit-primary-dark, #18b8aa);
+  flex-shrink: 0;
+}
+.hc-v2g-detail-head strong { font-size: 12.5px; color: var(--epit-text, #17191b); }
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-detail-head strong { color: var(--myh-text); }
+.hc-v2g-detail-energy,
+.hc-v2g-detail-reason,
+.hc-v2g-detail-soc {
+  margin: 0 0 4px;
+  font-size: 11.5px;
+  color: var(--epit-text-secondary, #656b73);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-detail-energy,
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-detail-reason,
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-detail-soc { color: var(--myh-text-secondary); }
+
+.hc-v2g-reserve-card strong { font-size: 13.5px; color: var(--epit-text, #17191b); }
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-reserve-card strong { color: var(--myh-text); }
+.hc-v2g-reserve-hint {
+  margin: 8px 0 14px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--epit-text-secondary, #656b73);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-reserve-hint { color: var(--myh-text-secondary); }
+.hc-v2g-reserve-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--epit-text-secondary, #656b73);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-reserve-row { color: var(--myh-text-secondary); }
+.hc-v2g-reserve-row strong { font-size: 13px; color: var(--epit-text, #17191b); }
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-reserve-row strong { color: var(--myh-text); }
+
+.hc-v2g-reserve-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  margin: 4px 0 10px;
+  background: linear-gradient(
+    to right,
+    var(--epit-primary-dark, #18b8aa) var(--fill, 50%),
+    rgba(23, 25, 27, .15) var(--fill, 50%)
+  );
+}
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-reserve-slider {
+  background: linear-gradient(
+    to right,
+    var(--myh-blue) var(--fill, 50%),
+    var(--myh-border) var(--fill, 50%)
+  );
+}
+.hc-v2g-reserve-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--epit-primary-dark, #18b8aa);
+  border: 3px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-v2g-reserve-slider::-webkit-slider-thumb { background: var(--myh-blue); }
+.hc-v2g-reserve-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--epit-primary-dark, #18b8aa);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+}
+.hc-v2g-reserve-note {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--epit-text-disabled, #989da4);
+}
+
+@media (max-width: 360px) {
+  .hc-v2g-status-card, .hc-v2g-timeline-card, .hc-v2g-reserve-card { padding: 13px; }
+}
+
+/* ==================================================================== */
+/* Mobility pattern card (vehicle screen). Default styling is E-pit-     */
+/* flavored (white/mint on the light epit-v2g background);               */
+/* [data-skin="myhyundai"] restores the original navy/white look.        */
+/* ==================================================================== */
+.hc-pattern-card {
+  margin: 20px 0 4px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--epit-white, #fff);
+  border: 1px solid var(--epit-border, #e5e7e9);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-pattern-card {
+  background: var(--myh-card, #fff);
+  border-color: var(--myh-border, #e5e9ed);
+}
+.hc-pattern-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.hc-pattern-head strong { font-size: 13.5px; color: var(--epit-text, #17191b); }
+.hc-mobile[data-skin="myhyundai"] .hc-pattern-head strong { color: var(--myh-text, #18212a); }
+.hc-pattern-confidence {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--epit-mint-soft, #ddf8f5);
+  color: var(--epit-primary-dark, #18b8aa);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-pattern-confidence {
+  background: var(--myh-blue-soft, #eaf1f7);
+  color: var(--myh-blue-light, #0b4a82);
+}
+.hc-pattern-confidence.is-낮음 { background: #fdf1e0; color: #a3670c; }
+
+.hc-pattern-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.hc-pattern-grid > div { display: flex; flex-direction: column; gap: 3px; }
+.hc-pattern-grid span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--epit-text-secondary, #656b73);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-pattern-grid span { color: var(--myh-text-secondary, #68737e); }
+.hc-pattern-grid strong { font-size: 15px; font-weight: 700; color: var(--epit-text, #17191b); }
+.hc-mobile[data-skin="myhyundai"] .hc-pattern-grid strong { color: var(--myh-text, #18212a); }
+
+.hc-pattern-note {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--epit-border, #e5e7e9);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--epit-text-secondary, #656b73);
+}
+.hc-mobile[data-skin="myhyundai"] .hc-pattern-note {
+  border-color: var(--myh-border, #e5e9ed);
+  color: var(--myh-text-secondary, #68737e);
+}
+.hc-pattern-empty { font-size: 12px; color: var(--epit-text-secondary, #656b73); }
+.hc-mobile[data-skin="myhyundai"] .hc-pattern-empty { color: var(--myh-text-secondary, #68737e); }
