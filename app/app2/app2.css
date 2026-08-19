@@ -1,0 +1,661 @@
+/* ======================================================================
+ * /app2 — 꿀차지 (HoneyCharge) design tokens & screens.
+ * Scoped entirely under .hc-app2 so nothing here can leak into /app or
+ * /mobile (same isolation pattern as app/mobile/mobile.css).
+ * ==================================================================== */
+
+.hc-app2 {
+  --a2-ink: #1c1410;
+  --a2-canvas: #faf7f1;
+  --a2-panel: #ffffff;
+  --a2-line: #ece3d4;
+  --a2-honey: #f0a93c;
+  --a2-honey-dark: #c97b1e;
+  --a2-honey-soft: #fdecc9;
+  --a2-text: #201a14;
+  --a2-text-secondary: #71695c;
+  --a2-text-muted: #a89c8a;
+  --a2-danger: #d1453c;
+  --a2-success: #2e9e63;
+  --a2-hero-bg: #1c1410;
+
+  min-height: 100vh;
+  background: #000;
+  font-family: Pretendard, "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  display: flex;
+  justify-content: center;
+}
+
+:where(.hc-app2) button {
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+:where(.hc-app2) input {
+  font: inherit;
+  color: inherit;
+}
+
+.hc-app2 .a2-frame {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--a2-canvas);
+}
+
+.hc-app2 .a2-screen-title {
+  margin: 0 0 14px;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--a2-text);
+}
+
+/* ---------------------------------------------------------------- */
+/* Auth screen (§1)                                                  */
+/* ---------------------------------------------------------------- */
+.a2-auth-screen {
+  min-height: 100vh;
+  padding: max(40px, env(safe-area-inset-top)) 22px calc(28px + env(safe-area-inset-bottom));
+  background: var(--a2-hero-bg);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.a2-auth-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 24px 0 40px;
+}
+.a2-auth-logo { font-size: 40px; line-height: 1; }
+.a2-auth-brand strong { font-size: 24px; font-weight: 800; letter-spacing: -0.01em; }
+.a2-auth-brand-en { font-size: 11px; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.55); text-transform: uppercase; }
+
+.a2-auth-form { display: flex; flex-direction: column; gap: 8px; }
+.a2-auth-form label {
+  margin-top: 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.72);
+}
+.a2-auth-form input {
+  padding: 15px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 15px;
+}
+.a2-auth-form input::placeholder { color: rgba(255, 255, 255, 0.32); }
+.a2-auth-form input:focus-visible {
+  outline: none;
+  border-color: var(--a2-honey);
+  background: rgba(255, 255, 255, 0.09);
+}
+.a2-auth-form input:disabled { opacity: 0.6; }
+
+.a2-auth-error {
+  margin: 10px 2px 0;
+  font-size: 12.5px;
+  color: #ff9a8f;
+  white-space: pre-line;
+}
+
+.a2-auth-cta {
+  margin-top: 22px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--a2-honey);
+  color: #201203;
+  font-size: 15.5px;
+  font-weight: 800;
+  text-align: center;
+  transition: opacity 0.15s ease;
+}
+.a2-auth-cta:disabled { opacity: 0.6; cursor: default; }
+
+.a2-auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 28px 0 18px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+}
+.a2-auth-divider::before,
+.a2-auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.a2-auth-social { display: flex; flex-direction: column; gap: 10px; }
+.a2-social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 15px 16px;
+  border-radius: 14px;
+  font-size: 14.5px;
+  font-weight: 700;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.a2-social-btn:active { transform: scale(0.98); }
+.a2-social-btn:disabled { opacity: 0.55; }
+
+.a2-social-hyundai { background: #002c5f; color: #fff; }
+.a2-social-kakao { background: #fee500; color: #191600; }
+.a2-social-google { background: #fff; color: #201a14; border: 1px solid rgba(255, 255, 255, 0.12); }
+.a2-social-apple { background: #000; color: #fff; border: 1px solid rgba(255, 255, 255, 0.5); }
+
+.a2-auth-demo-note {
+  margin: 20px 4px 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.38);
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------- */
+/* Permission / onboarding screen (§8)                                */
+/* ---------------------------------------------------------------- */
+.a2-permission-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--a2-panel);
+}
+.a2-permission-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: max(36px, env(safe-area-inset-top)) 22px 20px;
+}
+.a2-permission-title {
+  margin: 0 0 10px;
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--a2-text);
+}
+.a2-permission-subtitle {
+  margin: 0 0 24px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--a2-text-secondary);
+}
+
+.a2-permission-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.a2-permission-item {
+  display: flex;
+  gap: 14px;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--a2-line);
+}
+.a2-permission-icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--a2-honey-soft);
+  color: var(--a2-honey-dark);
+}
+.a2-permission-item-title {
+  margin: 0 0 4px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--a2-text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.a2-permission-badge {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--a2-line);
+  color: var(--a2-text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+}
+.a2-permission-item-desc {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--a2-text-secondary);
+}
+
+.a2-permission-cta-bar {
+  padding: 14px 22px calc(16px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--a2-line);
+  background: var(--a2-panel);
+}
+.a2-permission-cta {
+  width: 100%;
+  padding: 17px;
+  border-radius: 14px;
+  background: var(--a2-honey);
+  color: #201203;
+  font-size: 16px;
+  font-weight: 800;
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------- */
+/* Main shell / bottom nav (§12)                                     */
+/* ---------------------------------------------------------------- */
+.a2-shell { flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+.a2-shell-scroll { flex: 1; overflow-y: auto; padding: 18px 18px calc(90px + env(safe-area-inset-bottom)); }
+
+/*
+ * §12–§13: intentionally a plain solid bar for this web MVP. A future
+ * native bottom bar (SwiftUI/Jetpack Compose) can layer a frosted/
+ * translucent material here — backdrop-filter is a light approximation a
+ * native build should not feel bound to.
+ */
+.a2-bottom-nav {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--a2-line);
+}
+.a2-bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 0;
+  border-radius: 12px;
+  color: var(--a2-text-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.a2-bottom-nav-item.active { color: var(--a2-honey-dark); }
+
+/* ---------------------------------------------------------------- */
+/* Dashboard (§11) — top safety block                                 */
+/* ---------------------------------------------------------------- */
+.a2-dashboard-loading { padding: 40px 4px; color: var(--a2-text-secondary); font-size: 13px; }
+
+.a2-safety-card {
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--a2-hero-bg);
+  color: #fff;
+  box-shadow: 0 12px 30px rgba(28, 20, 16, 0.18);
+}
+.a2-safety-vehicle { margin: 0 0 14px; font-size: 13px; font-weight: 700; color: rgba(255, 255, 255, 0.7); }
+
+.a2-safety-soc-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.a2-safety-soc-value { display: block; font-size: 40px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+.a2-safety-soc-label { display: block; margin-top: 4px; font-size: 11.5px; color: rgba(255, 255, 255, 0.55); }
+.a2-safety-range { text-align: right; }
+.a2-safety-range-label { display: block; font-size: 11px; color: rgba(255, 255, 255, 0.55); }
+.a2-safety-range-value { display: block; margin-top: 3px; font-size: 18px; font-weight: 700; }
+
+.a2-safety-min-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.a2-safety-min-label { font-size: 12px; color: rgba(255, 255, 255, 0.65); font-weight: 600; }
+.a2-safety-min-value { font-size: 15px; font-weight: 800; color: #ff9a6b; }
+
+/* the safety boundary bar: 0→min is the "protected, do-not-cross" zone,
+ * min→soc is what V2G is actually allowed to use. */
+.a2-safety-bar { margin-top: 14px; }
+.a2-safety-bar-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: visible;
+}
+.a2-safety-bar-protected {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px 0 0 999px;
+  background: rgba(255, 154, 107, 0.35);
+}
+.a2-safety-bar-usable {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--a2-honey);
+  border-radius: 999px;
+}
+.a2-safety-bar-minline {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: #ff9a6b;
+  transform: translateX(-1px);
+}
+.a2-safety-bar-marker {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--a2-honey);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+.a2-safety-bar-ticks { position: relative; height: 16px; margin-top: 4px; }
+.a2-safety-bar-ticks span {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+}
+
+.a2-dashboard-quicklinks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.a2-quicklink {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--a2-panel);
+  border: 1px solid var(--a2-line);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--a2-text-secondary);
+}
+.a2-quicklink strong { font-size: 17px; color: var(--a2-honey-dark); }
+
+/* ---------------------------------------------------------------- */
+/* Station list / detail (§14)                                       */
+/* ---------------------------------------------------------------- */
+.a2-station-location-note {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--a2-honey-soft);
+  color: var(--a2-honey-dark);
+  font-size: 12px;
+}
+.a2-station-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.a2-station-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--a2-panel);
+  border: 1px solid var(--a2-line);
+}
+.a2-station-row.is-open { border-color: var(--a2-honey); }
+.a2-station-status-dot { flex-shrink: 0; width: 9px; height: 9px; border-radius: 50%; }
+.a2-station-status-dot.is-available { background: var(--a2-success); }
+.a2-station-status-dot.is-busy { background: #f0a83c; }
+.a2-station-status-dot.is-offline { background: #a3a8ae; }
+.a2-station-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.a2-station-row-main strong { font-size: 14px; color: var(--a2-text); }
+.a2-station-row-meta { font-size: 11.5px; color: var(--a2-text-secondary); }
+.a2-station-row-count { font-size: 12px; font-weight: 700; color: var(--a2-text-secondary); }
+
+.a2-station-detail {
+  margin: -2px 0 4px;
+  padding: 12px 14px 14px;
+  border-radius: 0 0 14px 14px;
+  background: var(--a2-honey-soft);
+}
+.a2-station-detail-meta { margin: 0 0 10px; font-size: 12px; color: var(--a2-honey-dark); }
+.a2-station-detail-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--a2-hero-bg);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+/* ---------------------------------------------------------------- */
+/* Map screen + station sheet + nav picker (§15–§18)                  */
+/* ---------------------------------------------------------------- */
+.a2-map-screen { position: relative; margin: -18px -18px 0; height: calc(100vh - 76px); display: flex; flex-direction: column; }
+.a2-map-topbar { position: absolute; top: 12px; left: 12px; z-index: 5; }
+.a2-map-back {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--a2-text);
+}
+.a2-map-frame { flex: 1; }
+.a2-map-frame .station-map { width: 100%; height: 100%; }
+
+.a2-station-sheet {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--a2-panel);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.16);
+}
+.a2-sheet-close { position: absolute; top: 10px; right: 10px; padding: 6px; color: var(--a2-text-muted); }
+.a2-sheet-name { display: block; font-size: 16px; font-weight: 800; color: var(--a2-text); }
+.a2-sheet-meta { margin: 4px 0 0; font-size: 12px; color: var(--a2-text-secondary); }
+.a2-sheet-availability { margin: 4px 0 12px; font-size: 12px; color: var(--a2-text-secondary); }
+.a2-sheet-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--a2-honey);
+  color: #201203;
+  font-size: 13.5px;
+  font-weight: 800;
+}
+
+.a2-navsheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+}
+.a2-navsheet {
+  width: 100%;
+  max-width: 430px;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  border-radius: 20px 20px 0 0;
+  background: var(--a2-panel);
+}
+.a2-navsheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.a2-navsheet-header strong { font-size: 15px; color: var(--a2-text); }
+.a2-navsheet-list { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.a2-navsheet-list button {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--a2-canvas);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--a2-text);
+  text-align: center;
+}
+.a2-navsheet-cancel {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--a2-line);
+  color: var(--a2-text-secondary);
+  font-size: 13.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------- */
+/* Rewards (§19–§22)                                                  */
+/* ---------------------------------------------------------------- */
+.a2-reward-balance {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 20px;
+  border-radius: 18px;
+  background: var(--a2-hero-bg);
+  color: #fff;
+  margin-bottom: 16px;
+}
+.a2-reward-balance span { font-size: 12.5px; color: rgba(255, 255, 255, 0.6); }
+.a2-reward-balance strong { font-size: 24px; font-weight: 800; color: var(--a2-honey); }
+
+.a2-reward-toast {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--a2-honey-soft);
+  color: var(--a2-honey-dark);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.a2-reward-section-title { margin: 18px 2px 8px; font-size: 12.5px; font-weight: 800; color: var(--a2-text-secondary); }
+
+.a2-reward-history { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.a2-reward-history li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--a2-line);
+  font-size: 13px;
+}
+.a2-reward-history-copy { display: flex; flex-direction: column; gap: 2px; }
+.a2-reward-history-copy strong { font-size: 13px; color: var(--a2-text); }
+.a2-reward-history-copy small { font-size: 11px; color: var(--a2-text-muted); }
+.a2-reward-history li .is-earn { color: var(--a2-success); font-weight: 700; }
+.a2-reward-history li .is-spend { color: var(--a2-text-secondary); font-weight: 700; }
+
+.a2-exchange-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.a2-exchange-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--a2-panel);
+  border: 1px solid var(--a2-line);
+}
+.a2-exchange-list li.is-used { opacity: 0.5; }
+.a2-exchange-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: var(--a2-honey-soft); color: var(--a2-honey-dark); flex-shrink: 0; }
+.a2-exchange-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.a2-exchange-copy strong { font-size: 13px; color: var(--a2-text); }
+.a2-exchange-copy span { font-size: 12px; color: var(--a2-text-secondary); }
+.a2-exchange-cost { margin-top: 2px; font-weight: 700; color: var(--a2-honey-dark) !important; }
+.a2-exchange-btn {
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: var(--a2-hero-bg);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.a2-exchange-btn:disabled { background: var(--a2-line); color: var(--a2-text-muted); }
+
+.a2-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 24px;
+}
+.a2-confirm-sheet {
+  width: 100%;
+  max-width: 320px;
+  padding: 22px;
+  border-radius: 18px;
+  background: var(--a2-panel);
+  text-align: center;
+}
+.a2-confirm-sheet strong { font-size: 15px; color: var(--a2-text); }
+.a2-confirm-cost { margin: 6px 0 2px; font-size: 20px; font-weight: 800; color: var(--a2-honey-dark); }
+.a2-confirm-copy { margin: 0 0 16px; font-size: 12.5px; color: var(--a2-text-secondary); }
+.a2-confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.a2-confirm-actions button { padding: 12px; border-radius: 10px; background: var(--a2-line); font-size: 13px; font-weight: 700; color: var(--a2-text-secondary); }
+.a2-confirm-actions button.is-primary { background: var(--a2-honey); color: #201203; }
+
+/* ---------------------------------------------------------------- */
+/* Vehicle registration (§6)                                          */
+/* ---------------------------------------------------------------- */
+.a2-vehicle-card { padding: 18px; border-radius: 16px; background: var(--a2-panel); border: 1px solid var(--a2-line); }
+.a2-vehicle-source-badge { display: inline-block; margin-bottom: 8px; padding: 3px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 700; }
+.a2-vehicle-source-badge.is-manual { background: var(--a2-line); color: var(--a2-text-secondary); }
+.a2-vehicle-source-badge.is-hyundai { background: #e7edf5; color: #0f56a3; }
+.a2-vehicle-card strong { display: block; font-size: 17px; color: var(--a2-text); }
+.a2-vehicle-card p { margin: 4px 0 0; font-size: 12.5px; color: var(--a2-text-secondary); }
+
+.a2-vehicle-form { display: flex; flex-direction: column; gap: 6px; }
+.a2-vehicle-form label { margin-top: 12px; font-size: 12px; font-weight: 700; color: var(--a2-text-secondary); }
+.a2-vehicle-form input {
+  padding: 13px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--a2-line);
+  background: var(--a2-panel);
+  font-size: 14px;
+  color: var(--a2-text);
+}
+.a2-vehicle-form input:focus-visible { outline: none; border-color: var(--a2-honey); }
+.a2-vehicle-cta { margin-top: 20px; padding: 15px; border-radius: 12px; background: var(--a2-honey); color: #201203; font-size: 14.5px; font-weight: 800; text-align: center; }
+.a2-vehicle-cta:disabled { opacity: 0.6; }
+
+.a2-vehicle-hyundai-copy { margin: 0 0 16px; font-size: 13px; color: var(--a2-text-secondary); line-height: 1.55; }
+.a2-vehicle-candidate-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.a2-vehicle-candidate-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--a2-panel);
+  border: 1px solid var(--a2-line);
+}
+.a2-vehicle-candidate-list strong { display: block; font-size: 13.5px; color: var(--a2-text); }
+.a2-vehicle-candidate-list span { font-size: 11.5px; color: var(--a2-text-secondary); }
+.a2-vehicle-candidate-list button { padding: 9px 14px; border-radius: 10px; background: var(--a2-hero-bg); color: #fff; font-size: 12px; font-weight: 700; }

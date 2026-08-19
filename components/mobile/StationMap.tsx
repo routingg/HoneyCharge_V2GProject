@@ -49,10 +49,15 @@ export function StationMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const onSelectRef = useRef(onSelect);
+  const selectedIdRef = useRef(selectedId);
 
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
+
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
 
   useEffect(() => {
     let disposed = false;
@@ -62,11 +67,22 @@ export function StationMap({
       const maplibregl = await import("maplibre-gl");
       if (disposed || !containerRef.current) return;
 
+      // Center on the already-selected station (if one was passed in as an
+      // initial prop, e.g. arriving from a station detail screen) instead
+      // of always starting at JEJU_CENTER — otherwise a station chosen
+      // before this component mounts gets silently reset to the default
+      // view, since the map doesn't exist yet when the [selectedId] effect
+      // below first runs.
+      const initialStation = stations.find(
+        (candidate) => candidate.id === selectedIdRef.current,
+      );
       const map = new maplibregl.Map({
         container: containerRef.current,
         style: BASE_STYLE_URL,
-        center: JEJU_CENTER,
-        zoom: 10,
+        center: initialStation
+          ? [initialStation.lng, initialStation.lat]
+          : JEJU_CENTER,
+        zoom: initialStation ? 13 : 10,
         minZoom: 8,
         maxZoom: 15,
         attributionControl: false,
@@ -96,7 +112,12 @@ export function StationMap({
           type: "circle",
           source: "stations",
           paint: {
-            "circle-radius": 8,
+            "circle-radius": [
+              "case",
+              ["boolean", ["feature-state", "selected"], false],
+              11,
+              8,
+            ],
             "circle-color": [
               "match",
               ["get", "status"],
@@ -106,10 +127,30 @@ export function StationMap({
               STATUS_COLOR.busy,
               STATUS_COLOR.offline,
             ],
-            "circle-stroke-color": "#fff",
-            "circle-stroke-width": 2,
+            "circle-stroke-color": [
+              "case",
+              ["boolean", ["feature-state", "selected"], false],
+              "#171d27",
+              "#fff",
+            ],
+            "circle-stroke-width": [
+              "case",
+              ["boolean", ["feature-state", "selected"], false],
+              3,
+              2,
+            ],
           },
         });
+
+        // Mark the station this component mounted with (if any) as
+        // selected now that the "stations" source actually exists —
+        // matches the initial-center fix above.
+        if (selectedIdRef.current) {
+          map.setFeatureState(
+            { source: "stations", id: selectedIdRef.current },
+            { selected: true },
+          );
+        }
 
         map.on("mousemove", "station-point", () => {
           map.getCanvas().style.cursor = "pointer";
@@ -138,9 +179,27 @@ export function StationMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const previousSelectedIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !selectedId) return;
+    if (!map || !map.getSource("stations")) return;
+
+    if (
+      previousSelectedIdRef.current &&
+      previousSelectedIdRef.current !== selectedId
+    ) {
+      map.setFeatureState(
+        { source: "stations", id: previousSelectedIdRef.current },
+        { selected: false },
+      );
+    }
+    if (selectedId) {
+      map.setFeatureState({ source: "stations", id: selectedId }, { selected: true });
+    }
+    previousSelectedIdRef.current = selectedId;
+
+    if (!selectedId) return;
     const station = stations.find((candidate) => candidate.id === selectedId);
     if (!station) return;
     map.easeTo({ center: [station.lng, station.lat], duration: 500 });
